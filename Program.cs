@@ -51,6 +51,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             OnAuthenticationFailed = _ => Task.CompletedTask,
             OnChallenge = context =>
             {
+                // Añadir CORS a la respuesta 401 para que el frontend reciba el error (si no, el navegador reporta CORS)
+                var origin = context.Request.Headers.Origin.FirstOrDefault();
+                var allowed = new[] { "http://localhost:5173", "http://localhost:3000", "https://opticontrol.cowib.es", "https://aventours.cowib.es", "https://trippilot.cowib.es", "https://loading-aventours.cowib.es" };
+                if (!string.IsNullOrEmpty(origin) && allowed.Contains(origin, StringComparer.OrdinalIgnoreCase))
+                {
+                    context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+                    context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+                }
                 context.HandleResponse();
                 context.Response.StatusCode = 401;
                 return Task.CompletedTask;
