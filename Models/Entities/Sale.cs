@@ -5,7 +5,8 @@ namespace OptiControl.Models.Entities;
 public class Sale
 {
     public int Id { get; set; }
-    public int ClientId { get; set; }
+    /// <summary>Opcional: venta sin cliente (walk-in, cotización).</summary>
+    public int? ClientId { get; set; }
     public DateTime Date { get; set; }
     /// <summary>Legacy OptiControl: descripción del producto.</summary>
     public string? Product { get; set; }
@@ -24,7 +25,7 @@ public class Sale
     public string? Currency { get; set; }
 
     [JsonIgnore]
-    public virtual Client Client { get; set; } = null!;
+    public virtual Client? Client { get; set; }
     [JsonIgnore]
     public virtual ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
 }

@@ -42,7 +42,7 @@ public class OpticsSaleService : IOpticsSaleService
         {
             Id = "V" + s.Id,
             Date = s.Date.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-            ClientId = s.ClientId.ToString(),
+            ClientId = s.ClientId?.ToString() ?? "",
             ClientName = s.ClientName,
             Items = items,
             Total = s.Total,
@@ -72,7 +72,7 @@ public class OpticsSaleService : IOpticsSaleService
 
         var sale = new Sale
         {
-            ClientId = clientIdParsed ?? 0,
+            ClientId = clientIdParsed,
             ClientName = dto.ClientName ?? "",
             Date = DateTime.UtcNow,
             Total = dto.Total,
@@ -128,7 +128,7 @@ public class OpticsSaleService : IOpticsSaleService
         var desc = isCotizacion
             ? $"Cotización guardada - {sale.ClientName} · {currencySym}{sale.Total:N0}"
             : $"Venta registrada - {sale.ClientName} · {currencySym}{sale.Total:N0}";
-        _activity.Record(SD.ActivityTypeSale, desc, "V" + sale.Id, sale.ClientId > 0 ? sale.ClientId : null);
+        _activity.Record(SD.ActivityTypeSale, desc, "V" + sale.Id, sale.ClientId);
 
         _context.Entry(sale).Collection(s => s.SaleItems).Load();
         return ToSaleResponse(sale);
@@ -185,7 +185,7 @@ public class OpticsSaleService : IOpticsSaleService
         _context.SaveChanges();
 
         var currencySym = sale.Currency == "USD" ? "$" : "C$";
-        _activity.Record(SD.ActivityTypeSale, $"Venta cancelada - {sale.ClientName} · {currencySym}{sale.Total:N0}", "V" + sale.Id, sale.ClientId > 0 ? sale.ClientId : null);
+        _activity.Record(SD.ActivityTypeSale, $"Venta cancelada - {sale.ClientName} · {currencySym}{sale.Total:N0}", "V" + sale.Id, sale.ClientId);
         return (true, null);
     }
 
@@ -202,7 +202,7 @@ public class OpticsSaleService : IOpticsSaleService
         _context.SaveChanges();
 
         var currencySym = sale.Currency == "USD" ? "$" : "C$";
-        _activity.Record(SD.ActivityTypeSale, $"Abono registrado - {sale.ClientName} · +{currencySym}{addPayment:N0}", "V" + sale.Id, sale.ClientId > 0 ? sale.ClientId : null);
+        _activity.Record(SD.ActivityTypeSale, $"Abono registrado - {sale.ClientName} · +{currencySym}{addPayment:N0}", "V" + sale.Id, sale.ClientId);
         return (true, null);
     }
 }

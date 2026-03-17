@@ -47,7 +47,7 @@ public class SaleService : ISaleService
         sale.Date = sale.Date == default ? DateTime.UtcNow.Date : sale.Date;
         _context.Sales.Add(sale);
         _context.SaveChanges();
-        var client = _context.Clients.Find(sale.ClientId);
+        var client = sale.ClientId.HasValue ? _context.Clients.Find(sale.ClientId.Value) : null;
         _activity.Record(SD.ActivityTypePayment, $"Venta: {client?.Name} - {sale.Product}", sale.Id.ToString(), sale.ClientId);
         return sale;
     }
