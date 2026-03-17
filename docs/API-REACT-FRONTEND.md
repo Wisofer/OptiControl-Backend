@@ -4,6 +4,41 @@ Documentación para integrar el **frontend React** con el **backend OptiControl*
 
 ---
 
+## Cambios recientes – Inventario: stock mínimo
+
+**Para el frontend:** el inventario de productos incorpora **stock mínimo**. Resumen de lo que hay que adaptar:
+
+| Qué | Detalle |
+|-----|--------|
+| **Nuevo campo en producto** | En todas las respuestas de producto (listado, detalle, crear, actualizar) viene **`stock_minimo`** (número). Es el umbral bajo el cual se considera “stock bajo”. |
+| **Formulario crear/editar producto** | Añadir campo **Stock mínimo** (número, opcional; por defecto 0). Enviar en POST/PUT como **`stockMinimo`** (camelCase). |
+| **Nuevo endpoint** | **GET `/api/products/low-stock`** — devuelve un **array** de productos cuyo `stock` actual es **menor** que `stock_minimo` (ordenados por stock ascendente). Sirve para alertas, widget “Productos con stock bajo” o reportes. |
+| **Alertas / UI** | Donde se muestre un producto, se puede mostrar aviso o badge cuando `stock < stock_minimo` (ej.: “Stock bajo”). |
+| **Mobile / POS** | En **GET `/api/mobile/products`** cada ítem incluye **`stockMinimo`** (camelCase) para mostrar alerta en lista de productos. |
+
+**Ejemplo de ítem de producto (respuesta API, snake_case):**
+```json
+{
+  "id": 1,
+  "nombre_producto": "Montura clásica",
+  "stock": 3,
+  "stock_minimo": 5,
+  ...
+}
+```
+
+**Ejemplo body para crear/actualizar producto (camelCase):**
+```json
+{
+  "nombreProducto": "Montura clásica",
+  "stock": 10,
+  "stockMinimo": 5,
+  ...
+}
+```
+
+---
+
 ## 1. Configuración base
 
 | Concepto | Valor |
@@ -184,6 +219,7 @@ Listar productos (paginado y búsqueda por nombre o marca).
       "precio_compra": 450,
       "precio": 850,
       "stock": 12,
+      "stock_minimo": 5,
       "fecha_creacion": "2025-12-05",
       "descripcion": "Montura metálica.",
       "proveedor": "Distribuidora Óptica"
@@ -195,6 +231,12 @@ Listar productos (paginado y búsqueda por nombre o marca).
   "pageSize": 20
 }
 ```
+
+---
+
+### GET `/api/products/low-stock`
+
+Lista de productos con **stock actual por debajo del stock mínimo** (para alertas o reportes). **Respuesta 200:** array de objetos producto (mismo formato que un ítem de listado), ordenados por stock ascendente.
 
 ---
 
@@ -217,6 +259,7 @@ Crear producto.
   "precioCompra": 450,
   "precio": 850,
   "stock": 12,
+  "stockMinimo": 5,
   "fechaCreacion": "2025-12-05",
   "descripcion": "Montura metálica.",
   "proveedor": "Distribuidora Óptica"

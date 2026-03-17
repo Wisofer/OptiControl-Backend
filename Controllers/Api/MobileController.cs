@@ -60,6 +60,7 @@ public class MobileController : ControllerBase
             Name = p.NombreProducto,
             Price = p.Precio,
             Stock = p.Stock,
+            StockMinimo = p.StockMinimo,
             Type = p.TipoProducto
         }).ToList();
         return Ok(new { items, totalCount = paged.TotalCount, page = paged.Page, pageSize = paged.PageSize });

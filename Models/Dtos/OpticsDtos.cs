@@ -19,6 +19,8 @@ public class ProductResponseDto
     public decimal Precio { get; set; }
     [JsonPropertyName("stock")]
     public int Stock { get; set; }
+    [JsonPropertyName("stock_minimo")]
+    public int StockMinimo { get; set; }
     [JsonPropertyName("fecha_creacion")]
     public string FechaCreacion { get; set; } = "";
     [JsonPropertyName("descripcion")]

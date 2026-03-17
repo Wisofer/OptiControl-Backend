@@ -29,6 +29,7 @@ public class ProductService : IProductService
             PrecioCompra = p.PrecioCompra,
             Precio = p.Precio,
             Stock = p.Stock,
+            StockMinimo = p.StockMinimo,
             FechaCreacion = p.FechaCreacion.ToString("yyyy-MM-dd"),
             Descripcion = p.Descripcion,
             Proveedor = p.Proveedor
@@ -87,6 +88,7 @@ public class ProductService : IProductService
         existing.PrecioCompra = product.PrecioCompra;
         existing.Precio = product.Precio;
         existing.Stock = product.Stock;
+        existing.StockMinimo = product.StockMinimo;
         existing.Descripcion = product.Descripcion;
         existing.Proveedor = product.Proveedor;
         if (product.FechaCreacion != default)
@@ -105,5 +107,15 @@ public class ProductService : IProductService
         _context.SaveChanges();
         _activity.Record(SD.ActivityTypeProduct, $"Producto eliminado: {name}", id.ToString(), null);
         return true;
+    }
+
+    public List<ProductResponseDto> GetLowStock()
+    {
+        return _context.Products
+            .Where(p => p.Stock < p.StockMinimo)
+            .OrderBy(p => p.Stock)
+            .ToList()
+            .Select(ToDto)
+            .ToList();
     }
 }

@@ -11,4 +11,6 @@ public interface IProductService
     ProductResponseDto? Update(int id, Product product);
     bool Delete(int id);
     Product? GetEntityById(int id);
+    /// <summary>Productos con stock actual por debajo del stock mínimo.</summary>
+    List<ProductResponseDto> GetLowStock();
 }

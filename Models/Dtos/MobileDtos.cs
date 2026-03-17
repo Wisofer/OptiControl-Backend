@@ -28,6 +28,8 @@ public class MobileProductDto
     public decimal Price { get; set; }
     [JsonPropertyName("stock")]
     public int Stock { get; set; }
+    [JsonPropertyName("stockMinimo")]
+    public int StockMinimo { get; set; }
     [JsonPropertyName("type")]
     public string Type { get; set; } = "";
 }

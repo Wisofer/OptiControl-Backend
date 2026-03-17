@@ -18,6 +18,10 @@ public class ProductsController : ControllerBase
     public IActionResult GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
         => Ok(_service.GetPaged(page, pageSize, search));
 
+    /// <summary>Productos con stock actual por debajo del stock mínimo (para alertas).</summary>
+    [HttpGet("low-stock")]
+    public IActionResult GetLowStock() => Ok(_service.GetLowStock());
+
     [HttpGet("{id:int}")]
     public IActionResult GetById(int id)
     {
