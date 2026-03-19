@@ -116,6 +116,7 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IServiceOpticaService, ServiceOpticaService>();
 builder.Services.AddScoped<IOpticsSaleService, OpticsSaleService>();
 builder.Services.AddScoped<IDashboardOpticsService, DashboardOpticsService>();
+builder.Services.AddScoped<ISaleTicketPdfService, SaleTicketPdfService>();
 
 var app = builder.Build();
 

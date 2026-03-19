@@ -12,12 +12,21 @@ public class OpticsSaleService : IOpticsSaleService
     private readonly ApplicationDbContext _context;
     private readonly IActivityService _activity;
     private readonly IProductService _productService;
+    private readonly IInvoiceService _invoiceService;
+    private readonly IHttpContextAccessor _httpContext;
 
-    public OpticsSaleService(ApplicationDbContext context, IActivityService activity, IProductService productService)
+    public OpticsSaleService(
+        ApplicationDbContext context,
+        IActivityService activity,
+        IProductService productService,
+        IInvoiceService invoiceService,
+        IHttpContextAccessor httpContext)
     {
         _context = context;
         _activity = activity;
         _productService = productService;
+        _invoiceService = invoiceService;
+        _httpContext = httpContext;
     }
 
     private static SaleItemDto ToItemDto(SaleItem i)
@@ -51,6 +60,77 @@ public class OpticsSaleService : IOpticsSaleService
             Currency = s.Currency ?? "NIO",
             Status = s.Status ?? ""
         };
+    }
+
+    private bool IsPaidSale(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status)) return false;
+        return status.Equals(SD.SaleStatusPagada, StringComparison.OrdinalIgnoreCase) ||
+               status.Equals(SD.SaleStatusCompletado, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string BuildSaleConcept(Sale sale)
+    {
+        var topItems = sale.SaleItems
+            .Take(3)
+            .Select(i => !string.IsNullOrWhiteSpace(i.ProductName) ? i.ProductName : i.ServiceName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+        var details = topItems.Count > 0 ? $" ({string.Join(", ", topItems)})" : "";
+        return $"Venta V{sale.Id}{details}";
+    }
+
+    private static string MapInvoicePaymentMethod(string? salePaymentMethod, string? currency)
+    {
+        var isUsd = string.Equals(currency, SD.CurrencyUSD, StringComparison.OrdinalIgnoreCase);
+        var isTransfer = !string.IsNullOrWhiteSpace(salePaymentMethod) &&
+                         salePaymentMethod.Contains("transfer", StringComparison.OrdinalIgnoreCase);
+
+        if (isUsd)
+            return isTransfer ? SD.FormaPagoTransferenciaDolares : SD.FormaPagoDolares;
+        return isTransfer ? SD.FormaPagoTransferenciaCordobas : SD.FormaPagoCordobas;
+    }
+
+    private string BuildInvoicePdfUrl(string invoiceId)
+    {
+        var req = _httpContext.HttpContext?.Request;
+        var scheme = req?.Scheme ?? "https";
+        var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
+        return $"{scheme}://{host}/api/invoices/{Uri.EscapeDataString(invoiceId)}/pdf";
+    }
+
+    private string BuildSaleTicketPdfUrl(int saleId)
+    {
+        var req = _httpContext.HttpContext?.Request;
+        var scheme = req?.Scheme ?? "https";
+        var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
+        return $"{scheme}://{host}/api/sales-history/{saleId}/ticket-pdf";
+    }
+
+    private (string? InvoiceId, string? InvoicePdfUrl) EnsureInvoiceForSale(Sale sale)
+    {
+        if (!sale.ClientId.HasValue || sale.ClientId.Value <= 0) return (null, null);
+        if (!IsPaidSale(sale.Status)) return (null, null);
+        if (string.Equals(sale.Status, SD.SaleStatusCotizacion, StringComparison.OrdinalIgnoreCase)) return (null, null);
+        if (string.Equals(sale.Status, SD.SaleStatusCancelada, StringComparison.OrdinalIgnoreCase)) return (null, null);
+
+        var concept = BuildSaleConcept(sale);
+        var existing = _context.Invoices.FirstOrDefault(i => i.ClientId == sale.ClientId.Value && i.Concept == concept);
+        if (existing != null)
+            return (existing.Id, BuildInvoicePdfUrl(existing.Id));
+
+        var invoice = new Invoice
+        {
+            ClientId = sale.ClientId.Value,
+            Date = DateTime.UtcNow,
+            DueDate = DateTime.UtcNow.Date.AddDays(7),
+            Amount = sale.Total,
+            Status = SD.InvoiceStatusPagado,
+            Concept = concept,
+            PaymentMethod = MapInvoicePaymentMethod(sale.PaymentMethod, sale.Currency)
+        };
+        var created = _invoiceService.Create(invoice);
+        return (created.Id, BuildInvoicePdfUrl(created.Id));
     }
 
     /// <summary>Ingreso real: Pagada = total, pendiente = amountPaid, cotizacion/Cancelada = 0.</summary>
@@ -131,7 +211,12 @@ public class OpticsSaleService : IOpticsSaleService
         _activity.Record(SD.ActivityTypeSale, desc, "V" + sale.Id, sale.ClientId);
 
         _context.Entry(sale).Collection(s => s.SaleItems).Load();
-        return ToSaleResponse(sale);
+        var response = ToSaleResponse(sale);
+        var invoiceResult = EnsureInvoiceForSale(sale);
+        response.InvoiceId = invoiceResult.InvoiceId;
+        response.InvoicePdfUrl = invoiceResult.InvoicePdfUrl;
+        response.SaleTicketPdfUrl = BuildSaleTicketPdfUrl(sale.Id);
+        return response;
     }
 
     public PagedResult<SaleResponseDto> GetSalesHistoryPaged(int page = 1, int pageSize = 20)
