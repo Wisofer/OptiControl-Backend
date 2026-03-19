@@ -15,6 +15,7 @@ public class SalesHistoryController : ControllerBase
 {
     private readonly IOpticsSaleService _service;
     private readonly IInvoiceService _invoiceService;
+    private readonly IInvoicePdfService _invoicePdfService;
     private readonly ISaleTicketPdfService _saleTicketPdfService;
     private readonly ApplicationDbContext _context;
     private readonly IHttpContextAccessor _httpContext;
@@ -22,12 +23,14 @@ public class SalesHistoryController : ControllerBase
     public SalesHistoryController(
         IOpticsSaleService service,
         IInvoiceService invoiceService,
+        IInvoicePdfService invoicePdfService,
         ISaleTicketPdfService saleTicketPdfService,
         ApplicationDbContext context,
         IHttpContextAccessor httpContext)
     {
         _service = service;
         _invoiceService = invoiceService;
+        _invoicePdfService = invoicePdfService;
         _saleTicketPdfService = saleTicketPdfService;
         _context = context;
         _httpContext = httpContext;
@@ -49,12 +52,15 @@ public class SalesHistoryController : ControllerBase
     [HttpGet("{id:int}/ticket-pdf-url")]
     public IActionResult GetTicketPdfUrl(int id)
     {
-        var sale = _service.GetSaleById(id);
+        var sale = _context.Sales.Include(s => s.SaleItems).FirstOrDefault(s => s.Id == id);
         if (sale == null) return NotFound(new { error = "Venta no encontrada" });
         var req = _httpContext.HttpContext?.Request;
         var scheme = req?.Scheme ?? "https";
         var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
         var url = $"{scheme}://{host}/api/sales-history/{id}/ticket-pdf";
+        var invoice = FindInvoiceForSale(sale);
+        if (invoice != null)
+            url = $"{scheme}://{host}/api/invoices/{Uri.EscapeDataString(invoice.Id)}/pdf";
         return Ok(new { pdfUrl = url });
     }
 
@@ -62,8 +68,20 @@ public class SalesHistoryController : ControllerBase
     [HttpGet("{id:int}/ticket-pdf")]
     public IActionResult GetTicketPdf(int id)
     {
-        var sale = _service.GetSaleById(id);
+        var sale = _context.Sales.Include(s => s.SaleItems).FirstOrDefault(s => s.Id == id);
         if (sale == null) return NotFound(new { error = "Venta no encontrada" });
+
+        // Si existe factura para esta venta, usamos ese mismo PDF canónico.
+        var invoice = FindInvoiceForSale(sale);
+        if (invoice != null)
+        {
+            var invoiceBytes = _invoicePdfService.GeneratePdf(invoice.Id);
+            if (invoiceBytes == null || invoiceBytes.Length == 0)
+                return StatusCode(500, new { error = "No se pudo generar el PDF de factura." });
+            Response.Headers.Append("Content-Disposition", $"inline; filename=\"Factura-{invoice.Id}.pdf\"");
+            return File(invoiceBytes, "application/pdf");
+        }
+
         var bytes = _saleTicketPdfService.GeneratePdf(id);
         if (bytes == null || bytes.Length == 0)
             return StatusCode(500, new { error = "No se pudo generar el ticket PDF." });
@@ -111,7 +129,7 @@ public class SalesHistoryController : ControllerBase
         if (string.Equals(sale.Status, SD.SaleStatusCancelada, StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { error = "No se puede facturar una venta cancelada." });
 
-        var defaultConcept = BuildSaleConcept(sale);
+        var defaultConcept = SaleInvoiceHelper.BuildSaleConcept(sale);
         var concept = string.IsNullOrWhiteSpace(request?.Concept) ? defaultConcept : request!.Concept!.Trim();
 
         // Evita duplicar facturas para la misma venta si ya existe con el mismo concepto base.
@@ -132,9 +150,9 @@ public class SalesHistoryController : ControllerBase
             Date = DateTime.UtcNow,
             DueDate = request?.DueDate?.Date ?? DateTime.UtcNow.Date.AddDays(7),
             Amount = sale.Total,
-            Status = IsPaidSale(sale.Status) ? SD.InvoiceStatusPagado : SD.InvoiceStatusPendiente,
+            Status = SaleInvoiceHelper.IsPaidSale(sale.Status) ? SD.InvoiceStatusPagado : SD.InvoiceStatusPendiente,
             Concept = concept,
-            PaymentMethod = MapInvoicePaymentMethod(sale.PaymentMethod, sale.Currency)
+            PaymentMethod = SaleInvoiceHelper.MapInvoicePaymentMethod(sale.PaymentMethod, sale.Currency)
         };
 
         var created = _invoiceService.Create(invoice);
@@ -146,41 +164,20 @@ public class SalesHistoryController : ControllerBase
         });
     }
 
-    private static bool IsPaidSale(string? status)
-    {
-        if (string.IsNullOrWhiteSpace(status)) return false;
-        return status.Equals(SD.SaleStatusPagada, StringComparison.OrdinalIgnoreCase) ||
-               status.Equals(SD.SaleStatusCompletado, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string BuildSaleConcept(Sale sale)
-    {
-        var topItems = sale.SaleItems
-            .Take(3)
-            .Select(i => !string.IsNullOrWhiteSpace(i.ProductName) ? i.ProductName : i.ServiceName)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .ToList();
-        var details = topItems.Count > 0 ? $" ({string.Join(", ", topItems)})" : "";
-        return $"Venta V{sale.Id}{details}";
-    }
-
-    private static string MapInvoicePaymentMethod(string? salePaymentMethod, string? currency)
-    {
-        var isUsd = string.Equals(currency, SD.CurrencyUSD, StringComparison.OrdinalIgnoreCase);
-        var isTransfer = !string.IsNullOrWhiteSpace(salePaymentMethod) &&
-                         salePaymentMethod.Contains("transfer", StringComparison.OrdinalIgnoreCase);
-
-        if (isUsd)
-            return isTransfer ? SD.FormaPagoTransferenciaDolares : SD.FormaPagoDolares;
-        return isTransfer ? SD.FormaPagoTransferenciaCordobas : SD.FormaPagoCordobas;
-    }
-
     private string BuildPdfUrl(string invoiceId)
     {
         var req = _httpContext.HttpContext?.Request;
         var scheme = req?.Scheme ?? "https";
         var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
         return $"{scheme}://{host}/api/invoices/{Uri.EscapeDataString(invoiceId)}/pdf";
+    }
+
+    private Invoice? FindInvoiceForSale(Sale sale)
+    {
+        if (!sale.ClientId.HasValue) return null;
+        if (!SaleInvoiceHelper.IsPaidSale(sale.Status)) return null;
+        var concept = SaleInvoiceHelper.BuildSaleConcept(sale);
+        return _context.Invoices.FirstOrDefault(i => i.ClientId == sale.ClientId.Value && i.Concept == concept);
     }
 }
 

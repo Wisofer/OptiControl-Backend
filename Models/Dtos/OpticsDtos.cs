@@ -136,6 +136,8 @@ public class SaleResponseDto
     public string? InvoiceId { get; set; }
     [JsonPropertyName("invoicePdfUrl")]
     public string? InvoicePdfUrl { get; set; }
+    [JsonPropertyName("invoicePublicPdfUrl")]
+    public string? InvoicePublicPdfUrl { get; set; }
     [JsonPropertyName("saleTicketPdfUrl")]
     public string? SaleTicketPdfUrl { get; set; }
 }

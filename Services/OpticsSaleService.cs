@@ -62,41 +62,20 @@ public class OpticsSaleService : IOpticsSaleService
         };
     }
 
-    private bool IsPaidSale(string? status)
-    {
-        if (string.IsNullOrWhiteSpace(status)) return false;
-        return status.Equals(SD.SaleStatusPagada, StringComparison.OrdinalIgnoreCase) ||
-               status.Equals(SD.SaleStatusCompletado, StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static string BuildSaleConcept(Sale sale)
-    {
-        var topItems = sale.SaleItems
-            .Take(3)
-            .Select(i => !string.IsNullOrWhiteSpace(i.ProductName) ? i.ProductName : i.ServiceName)
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .ToList();
-        var details = topItems.Count > 0 ? $" ({string.Join(", ", topItems)})" : "";
-        return $"Venta V{sale.Id}{details}";
-    }
-
-    private static string MapInvoicePaymentMethod(string? salePaymentMethod, string? currency)
-    {
-        var isUsd = string.Equals(currency, SD.CurrencyUSD, StringComparison.OrdinalIgnoreCase);
-        var isTransfer = !string.IsNullOrWhiteSpace(salePaymentMethod) &&
-                         salePaymentMethod.Contains("transfer", StringComparison.OrdinalIgnoreCase);
-
-        if (isUsd)
-            return isTransfer ? SD.FormaPagoTransferenciaDolares : SD.FormaPagoDolares;
-        return isTransfer ? SD.FormaPagoTransferenciaCordobas : SD.FormaPagoCordobas;
-    }
-
     private string BuildInvoicePdfUrl(string invoiceId)
     {
         var req = _httpContext.HttpContext?.Request;
         var scheme = req?.Scheme ?? "https";
         var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
         return $"{scheme}://{host}/api/invoices/{Uri.EscapeDataString(invoiceId)}/pdf";
+    }
+
+    private string BuildInvoicePublicPdfUrl(string invoiceId)
+    {
+        var req = _httpContext.HttpContext?.Request;
+        var scheme = req?.Scheme ?? "https";
+        var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
+        return $"{scheme}://{host}/api/public/invoices/{Uri.EscapeDataString(invoiceId)}/pdf";
     }
 
     private string BuildSaleTicketPdfUrl(int saleId)
@@ -107,17 +86,17 @@ public class OpticsSaleService : IOpticsSaleService
         return $"{scheme}://{host}/api/sales-history/{saleId}/ticket-pdf";
     }
 
-    private (string? InvoiceId, string? InvoicePdfUrl) EnsureInvoiceForSale(Sale sale)
+    private (string? InvoiceId, string? InvoicePdfUrl, string? InvoicePublicPdfUrl) EnsureInvoiceForSale(Sale sale)
     {
-        if (!sale.ClientId.HasValue || sale.ClientId.Value <= 0) return (null, null);
-        if (!IsPaidSale(sale.Status)) return (null, null);
-        if (string.Equals(sale.Status, SD.SaleStatusCotizacion, StringComparison.OrdinalIgnoreCase)) return (null, null);
-        if (string.Equals(sale.Status, SD.SaleStatusCancelada, StringComparison.OrdinalIgnoreCase)) return (null, null);
+        if (!sale.ClientId.HasValue || sale.ClientId.Value <= 0) return (null, null, null);
+        if (!SaleInvoiceHelper.IsPaidSale(sale.Status)) return (null, null, null);
+        if (string.Equals(sale.Status, SD.SaleStatusCotizacion, StringComparison.OrdinalIgnoreCase)) return (null, null, null);
+        if (string.Equals(sale.Status, SD.SaleStatusCancelada, StringComparison.OrdinalIgnoreCase)) return (null, null, null);
 
-        var concept = BuildSaleConcept(sale);
+        var concept = SaleInvoiceHelper.BuildSaleConcept(sale);
         var existing = _context.Invoices.FirstOrDefault(i => i.ClientId == sale.ClientId.Value && i.Concept == concept);
         if (existing != null)
-            return (existing.Id, BuildInvoicePdfUrl(existing.Id));
+            return (existing.Id, BuildInvoicePdfUrl(existing.Id), BuildInvoicePublicPdfUrl(existing.Id));
 
         var invoice = new Invoice
         {
@@ -127,10 +106,10 @@ public class OpticsSaleService : IOpticsSaleService
             Amount = sale.Total,
             Status = SD.InvoiceStatusPagado,
             Concept = concept,
-            PaymentMethod = MapInvoicePaymentMethod(sale.PaymentMethod, sale.Currency)
+            PaymentMethod = SaleInvoiceHelper.MapInvoicePaymentMethod(sale.PaymentMethod, sale.Currency)
         };
         var created = _invoiceService.Create(invoice);
-        return (created.Id, BuildInvoicePdfUrl(created.Id));
+        return (created.Id, BuildInvoicePdfUrl(created.Id), BuildInvoicePublicPdfUrl(created.Id));
     }
 
     /// <summary>Ingreso real: Pagada = total, pendiente = amountPaid, cotizacion/Cancelada = 0.</summary>
@@ -215,7 +194,9 @@ public class OpticsSaleService : IOpticsSaleService
         var invoiceResult = EnsureInvoiceForSale(sale);
         response.InvoiceId = invoiceResult.InvoiceId;
         response.InvoicePdfUrl = invoiceResult.InvoicePdfUrl;
-        response.SaleTicketPdfUrl = BuildSaleTicketPdfUrl(sale.Id);
+        response.InvoicePublicPdfUrl = invoiceResult.InvoicePublicPdfUrl;
+        // Para ventas pagadas usamos un solo PDF canónico (factura) para imprimir/compartir.
+        response.SaleTicketPdfUrl = invoiceResult.InvoicePdfUrl ?? BuildSaleTicketPdfUrl(sale.Id);
         return response;
     }
 
