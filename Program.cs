@@ -53,7 +53,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             {
                 // Añadir CORS a la respuesta 401 para que el frontend reciba el error (si no, el navegador reporta CORS)
                 var origin = context.Request.Headers.Origin.FirstOrDefault();
-                var allowed = new[] { "http://localhost:5173", "http://localhost:3000", "https://opticontrol.cowib.es", "https://aventours.cowib.es", "https://trippilot.cowib.es", "https://loading-aventours.cowib.es" };
+                var allowed = new[]
+                {
+                    "http://localhost:5173",
+                    "http://localhost:3000",
+                    "https://opticontrol.cowib.es",
+                    "https://opticontrol-frontend.cowib.es",
+                };
                 if (!string.IsNullOrEmpty(origin) && allowed.Contains(origin, StringComparer.OrdinalIgnoreCase))
                 {
                     context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
@@ -80,6 +86,7 @@ builder.Services.AddCors(options =>
                 "http://localhost:5173",
                 "http://localhost:3000",
                 "https://opticontrol.cowib.es",
+                "https://opticontrol-frontend.cowib.es",
                 "https://aventours.cowib.es",
                 "https://trippilot.cowib.es",
                 "https://loading-aventours.cowib.es")
