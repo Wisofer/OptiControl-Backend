@@ -15,6 +15,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Reservation> Reservations { get; set; }
     public DbSet<Sale> Sales { get; set; }
     public DbSet<SaleItem> SaleItems { get; set; }
+    public DbSet<SalePayment> SalePayments { get; set; }
     public DbSet<Product> Products { get; set; }
     public DbSet<ServiceOptica> ServiceOpticas { get; set; }
     public DbSet<Invoice> Invoices { get; set; }
@@ -94,6 +95,19 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Subtotal).HasColumnType("decimal(18,2)");
             entity.HasOne(e => e.Sale)
                 .WithMany(s => s.SaleItems)
+                .HasForeignKey(e => e.SaleId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<SalePayment>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Date).IsRequired();
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+            entity.Property(e => e.PaymentType).HasMaxLength(50);
+            entity.Property(e => e.Bank).HasMaxLength(100);
+            entity.HasOne(e => e.Sale)
+                .WithMany(s => s.Payments)
                 .HasForeignKey(e => e.SaleId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

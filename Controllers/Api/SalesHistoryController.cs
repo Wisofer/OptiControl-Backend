@@ -88,7 +88,7 @@ public class SalesHistoryController : ControllerBase
         }
         if (request.AddPayment.HasValue && request.AddPayment.Value > 0)
         {
-            var (success, error) = _service.AddPayment(id, request.AddPayment.Value);
+            var (success, error) = _service.AddPayment(id, request.AddPayment.Value, request.PaymentType, request.Bank);
             if (!success) return BadRequest(new { error = error ?? "No se pudo registrar el abono" });
             var sale = _service.GetSaleById(id);
             return Ok(sale);
@@ -163,6 +163,8 @@ public class SalesHistoryUpdateRequest
 {
     public string? Status { get; set; }
     public decimal? AddPayment { get; set; }
+    public string? PaymentType { get; set; }
+    public string? Bank { get; set; }
 }
 
 public class GenerateInvoiceFromSaleRequest

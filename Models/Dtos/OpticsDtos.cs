@@ -165,6 +165,20 @@ public class SaleResponseDto
     public decimal? ChangeDue { get; set; }
     [JsonPropertyName("changeCurrency")]
     public string? ChangeCurrency { get; set; }
+    [JsonPropertyName("paymentHistory")]
+    public List<SalePaymentDto> PaymentHistory { get; set; } = new();
+}
+
+public class SalePaymentDto
+{
+    [JsonPropertyName("date")]
+    public string Date { get; set; } = "";
+    [JsonPropertyName("amount")]
+    public decimal Amount { get; set; }
+    [JsonPropertyName("paymentType")]
+    public string? PaymentType { get; set; }
+    [JsonPropertyName("bank")]
+    public string? Bank { get; set; }
 }
 
 /// <summary>Actividad reciente para dashboard (spec).</summary>

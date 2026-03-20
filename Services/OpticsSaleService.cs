@@ -41,9 +41,24 @@ public class OpticsSaleService : IOpticsSaleService
         };
     }
 
+    private static SalePaymentDto ToPaymentDto(SalePayment p)
+    {
+        return new SalePaymentDto
+        {
+            Date = p.Date.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            Amount = p.Amount,
+            PaymentType = p.PaymentType,
+            Bank = p.Bank
+        };
+    }
+
     private static SaleResponseDto ToSaleResponse(Sale s)
     {
         var items = s.SaleItems?.Select(ToItemDto).ToList() ?? new List<SaleItemDto>();
+        var payments = s.Payments?
+            .OrderBy(p => p.Date)
+            .Select(ToPaymentDto)
+            .ToList() ?? new List<SalePaymentDto>();
         return new SaleResponseDto
         {
             Id = "V" + s.Id,
@@ -55,7 +70,8 @@ public class OpticsSaleService : IOpticsSaleService
             AmountPaid = s.AmountPaid,
             PaymentMethod = s.PaymentMethod,
             Currency = s.Currency ?? "NIO",
-            Status = s.Status ?? ""
+            Status = s.Status ?? "",
+            PaymentHistory = payments
         };
     }
 
@@ -161,6 +177,19 @@ public class OpticsSaleService : IOpticsSaleService
         _context.Sales.Add(sale);
         _context.SaveChanges();
 
+        if (!isCotizacion && amountPaidSaleCurrency > 0)
+        {
+            _context.SalePayments.Add(new SalePayment
+            {
+                SaleId = sale.Id,
+                Date = sale.Date,
+                Amount = amountPaidSaleCurrency,
+                PaymentType = dto.PaymentMethod,
+                Bank = null
+            });
+            _context.SaveChanges();
+        }
+
         foreach (var item in computedItems)
         {
             var type = item.Type;
@@ -204,6 +233,7 @@ public class OpticsSaleService : IOpticsSaleService
         _activity.Record(SD.ActivityTypeSale, desc, "V" + sale.Id, sale.ClientId);
 
         _context.Entry(sale).Collection(s => s.SaleItems).Load();
+        _context.Entry(sale).Collection(s => s.Payments).Load();
         var response = ToSaleResponse(sale);
         response.SaleTicketPdfUrl = BuildSaleTicketPdfUrl(sale.Id);
         var totalUsd = exchangeRate > 0 ? Round2(totalNio / exchangeRate) : totalNio;
@@ -223,7 +253,10 @@ public class OpticsSaleService : IOpticsSaleService
     {
         pageSize = Math.Clamp(pageSize, 1, 100);
         page = Math.Max(1, page);
-        var q = _context.Sales.Include(s => s.SaleItems).OrderByDescending(s => s.Date);
+        var q = _context.Sales
+            .Include(s => s.SaleItems)
+            .Include(s => s.Payments)
+            .OrderByDescending(s => s.Date);
         var totalCount = q.Count();
         var list = q.Skip((page - 1) * pageSize).Take(pageSize).ToList();
         var dtos = list.Select(ToSaleResponse).ToList();
@@ -234,7 +267,11 @@ public class OpticsSaleService : IOpticsSaleService
     {
         pageSize = Math.Clamp(pageSize, 1, 100);
         page = Math.Max(1, page);
-        var q = _context.Sales.Include(s => s.SaleItems).Where(s => s.ClientId == clientId).OrderByDescending(s => s.Date);
+        var q = _context.Sales
+            .Include(s => s.SaleItems)
+            .Include(s => s.Payments)
+            .Where(s => s.ClientId == clientId)
+            .OrderByDescending(s => s.Date);
         var totalCount = q.Count();
         var list = q.Skip((page - 1) * pageSize).Take(pageSize).ToList();
         var dtos = list.Select(ToSaleResponse).ToList();
@@ -243,7 +280,10 @@ public class OpticsSaleService : IOpticsSaleService
 
     public SaleResponseDto? GetSaleById(int id)
     {
-        var s = _context.Sales.Include(sale => sale.SaleItems).FirstOrDefault(sale => sale.Id == id);
+        var s = _context.Sales
+            .Include(sale => sale.SaleItems)
+            .Include(sale => sale.Payments)
+            .FirstOrDefault(sale => sale.Id == id);
         return s == null ? null : ToSaleResponse(s);
     }
 
@@ -274,7 +314,7 @@ public class OpticsSaleService : IOpticsSaleService
         return (true, null);
     }
 
-    public (bool Success, string? Error) AddPayment(int id, decimal addPayment)
+    public (bool Success, string? Error) AddPayment(int id, decimal addPayment, string? paymentType = null, string? bank = null)
     {
         if (addPayment <= 0) return (false, "El monto a abonar debe ser mayor a 0");
         var sale = _context.Sales.Find(id);
@@ -284,6 +324,14 @@ public class OpticsSaleService : IOpticsSaleService
         sale.AmountPaid += addPayment;
         if (sale.AmountPaid >= sale.Total)
             sale.Status = SD.SaleStatusPagada;
+        _context.SalePayments.Add(new SalePayment
+        {
+            SaleId = sale.Id,
+            Date = DateTime.UtcNow,
+            Amount = addPayment,
+            PaymentType = string.IsNullOrWhiteSpace(paymentType) ? sale.PaymentMethod : paymentType,
+            Bank = string.IsNullOrWhiteSpace(bank) ? null : bank.Trim()
+        });
         _context.SaveChanges();
 
         var currencySym = sale.Currency == "USD" ? "$" : "C$";

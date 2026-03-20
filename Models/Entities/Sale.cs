@@ -28,4 +28,6 @@ public class Sale
     public virtual Client? Client { get; set; }
     [JsonIgnore]
     public virtual ICollection<SaleItem> SaleItems { get; set; } = new List<SaleItem>();
+    [JsonIgnore]
+    public virtual ICollection<SalePayment> Payments { get; set; } = new List<SalePayment>();
 }

@@ -9,5 +9,5 @@ public interface IOpticsSaleService
     PagedResult<SaleResponseDto> GetSalesByClientId(int clientId, int page = 1, int pageSize = 10);
     SaleResponseDto? GetSaleById(int id);
     (bool Success, string? Error) CancelSale(int id);
-    (bool Success, string? Error) AddPayment(int id, decimal addPayment);
+    (bool Success, string? Error) AddPayment(int id, decimal addPayment, string? paymentType = null, string? bank = null);
 }
