@@ -167,6 +167,11 @@ public class SaleTicketPdfService : ISaleTicketPdfService
                         {
                             c.Item().PaddingTop(1).AlignRight().Text($"Equiv. USD {totalUsd:N2} (TC {rate:N2})").FontSize(8);
                         }
+
+                        c.Item().PaddingTop(5).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+                        c.Item().PaddingTop(3).AlignCenter()
+                            .Text("Gracias por su compra.")
+                            .FontSize(8).FontColor(Colors.Grey.Darken1);
                     });
                 });
             });
