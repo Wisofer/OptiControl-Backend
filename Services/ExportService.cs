@@ -48,6 +48,135 @@ public class ExportService : IExportService
             list.Select(c => new[] { c.Pasaporte ?? "-", c.Name, c.Email, c.Phone ?? "-" }).ToList());
     }
 
+    public byte[] GetProductsExcel(string? search = null)
+    {
+        var list = GetProductsList(search);
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("Inventario");
+        ws.Cell(1, 1).Value = "Producto"; ws.Cell(1, 2).Value = "Tipo"; ws.Cell(1, 3).Value = "Marca"; ws.Cell(1, 4).Value = "Proveedor";
+        ws.Cell(1, 5).Value = "P. compra"; ws.Cell(1, 6).Value = "Precio"; ws.Cell(1, 7).Value = "Stock"; ws.Cell(1, 8).Value = "Stock mínimo";
+        var headerRow = ws.Range(1, 1, 1, 8);
+        headerRow.Style.Font.Bold = true; headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+        var row = 2;
+        foreach (var p in list)
+        {
+            ws.Cell(row, 1).Value = p.NombreProducto;
+            ws.Cell(row, 2).Value = p.TipoProducto;
+            ws.Cell(row, 3).Value = p.Marca ?? "-";
+            ws.Cell(row, 4).Value = p.Proveedor ?? "-";
+            ws.Cell(row, 5).Value = p.PrecioCompra;
+            ws.Cell(row, 6).Value = p.Precio;
+            ws.Cell(row, 7).Value = p.Stock;
+            ws.Cell(row, 8).Value = p.StockMinimo;
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+        using var stream = new MemoryStream();
+        wb.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public byte[] GetProductsPdf(string? search = null)
+    {
+        var list = GetProductsList(search);
+        var companyName = _settings.GetCompanyName();
+        var rows = list.Select(p => new[]
+        {
+            p.NombreProducto,
+            p.TipoProducto,
+            p.Marca ?? "-",
+            p.Proveedor ?? "-",
+            p.PrecioCompra.ToString("N2"),
+            p.Precio.ToString("N2"),
+            p.Stock.ToString(),
+            p.StockMinimo.ToString()
+        }).ToList();
+        return BuildTablePdf(companyName, "Listado de inventario", new[] { "Producto", "Tipo", "Marca", "Proveedor", "P. compra", "Precio", "Stock", "Stock mínimo" }, rows, true);
+    }
+
+    public byte[] GetOpticsServicesExcel(string? search = null)
+    {
+        var list = GetOpticsServicesList(search);
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("Servicios");
+        ws.Cell(1, 1).Value = "Servicio"; ws.Cell(1, 2).Value = "Precio"; ws.Cell(1, 3).Value = "Descripción";
+        var headerRow = ws.Range(1, 1, 1, 3);
+        headerRow.Style.Font.Bold = true; headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+        var row = 2;
+        foreach (var s in list)
+        {
+            ws.Cell(row, 1).Value = s.NombreServicio;
+            ws.Cell(row, 2).Value = s.Precio;
+            ws.Cell(row, 3).Value = s.Descripcion ?? "-";
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+        using var stream = new MemoryStream();
+        wb.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public byte[] GetOpticsServicesPdf(string? search = null)
+    {
+        var list = GetOpticsServicesList(search);
+        var companyName = _settings.GetCompanyName();
+        var rows = list.Select(s => new[] { s.NombreServicio, s.Precio.ToString("N2"), s.Descripcion ?? "-" }).ToList();
+        return BuildTablePdf(companyName, "Listado de servicios", new[] { "Servicio", "Precio", "Descripción" }, rows);
+    }
+
+    public byte[] GetSalesHistoryExcel(DateTime? dateFrom = null, DateTime? dateTo = null, string? status = null, string? paymentMethod = null)
+    {
+        var list = GetSalesHistoryList(dateFrom, dateTo, status, paymentMethod);
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("Historial ventas");
+        ws.Cell(1, 1).Value = "Fecha"; ws.Cell(1, 2).Value = "Cliente"; ws.Cell(1, 3).Value = "Ítems"; ws.Cell(1, 4).Value = "Total"; ws.Cell(1, 5).Value = "Pagado";
+        ws.Cell(1, 6).Value = "Pendiente"; ws.Cell(1, 7).Value = "Estado"; ws.Cell(1, 8).Value = "Pago"; ws.Cell(1, 9).Value = "Moneda";
+        var headerRow = ws.Range(1, 1, 1, 9);
+        headerRow.Style.Font.Bold = true; headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+        var row = 2;
+        foreach (var s in list)
+        {
+            var pending = Math.Max(0, s.Total - s.AmountPaid);
+            ws.Cell(row, 1).Value = s.Date.ToString("dd/MM/yyyy HH:mm");
+            ws.Cell(row, 2).Value = s.ClientName ?? "-";
+            ws.Cell(row, 3).Value = s.SaleItems?.Count ?? 0;
+            ws.Cell(row, 4).Value = s.Total;
+            ws.Cell(row, 5).Value = s.AmountPaid;
+            ws.Cell(row, 6).Value = pending;
+            ws.Cell(row, 7).Value = s.Status;
+            ws.Cell(row, 8).Value = s.PaymentMethod ?? "-";
+            ws.Cell(row, 9).Value = s.Currency ?? "NIO";
+            row++;
+        }
+        ws.Columns().AdjustToContents();
+        using var stream = new MemoryStream();
+        wb.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public byte[] GetSalesHistoryPdf(DateTime? dateFrom = null, DateTime? dateTo = null, string? status = null, string? paymentMethod = null)
+    {
+        var list = GetSalesHistoryList(dateFrom, dateTo, status, paymentMethod);
+        var companyName = _settings.GetCompanyName();
+        var rows = list.Select(s =>
+        {
+            var pending = Math.Max(0, s.Total - s.AmountPaid);
+            return new[]
+            {
+                s.Date.ToString("dd/MM/yyyy HH:mm"),
+                s.ClientName ?? "-",
+                (s.SaleItems?.Count ?? 0).ToString(),
+                s.Total.ToString("N2"),
+                s.AmountPaid.ToString("N2"),
+                pending.ToString("N2"),
+                s.Status,
+                s.PaymentMethod ?? "-",
+                s.Currency ?? "NIO"
+            };
+        }).ToList();
+        return BuildTablePdf(companyName, "Historial de ventas", new[] { "Fecha", "Cliente", "Ítems", "Total", "Pagado", "Pendiente", "Estado", "Pago", "Moneda" }, rows, true);
+    }
+
     public byte[] GetReservationsExcel(int? clientId, string? paymentStatus, string? paymentMethod, DateTime? dateFrom, DateTime? dateTo)
     {
         var list = GetReservationsList(clientId, paymentStatus, paymentMethod, dateFrom, dateTo);
@@ -251,6 +380,46 @@ public class ExportService : IExportService
         if (dateFrom.HasValue) q = q.Where(r => r.StartDate >= dateFrom.Value);
         if (dateTo.HasValue) q = q.Where(r => r.EndDate <= dateTo.Value);
         return q.OrderByDescending(r => r.StartDate).ToList();
+    }
+
+    private List<Product> GetProductsList(string? search)
+    {
+        var q = _context.Products.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            q = q.Where(p =>
+                (p.NombreProducto != null && p.NombreProducto.ToLower().Contains(s)) ||
+                (p.Marca != null && p.Marca.ToLower().Contains(s)) ||
+                (p.Proveedor != null && p.Proveedor.ToLower().Contains(s)) ||
+                (p.Descripcion != null && p.Descripcion.ToLower().Contains(s)));
+        }
+        return q.OrderBy(p => p.NombreProducto).ToList();
+    }
+
+    private List<ServiceOptica> GetOpticsServicesList(string? search)
+    {
+        var q = _context.ServiceOpticas.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLower();
+            q = q.Where(x =>
+                (x.NombreServicio != null && x.NombreServicio.ToLower().Contains(s)) ||
+                (x.Descripcion != null && x.Descripcion.ToLower().Contains(s)));
+        }
+        return q.OrderBy(x => x.NombreServicio).ToList();
+    }
+
+    private List<Sale> GetSalesHistoryList(DateTime? dateFrom, DateTime? dateTo, string? status, string? paymentMethod)
+    {
+        var q = _context.Sales
+            .Include(s => s.SaleItems)
+            .AsQueryable();
+        if (dateFrom.HasValue) q = q.Where(s => s.Date >= dateFrom.Value);
+        if (dateTo.HasValue) q = q.Where(s => s.Date <= dateTo.Value);
+        if (!string.IsNullOrWhiteSpace(status)) q = q.Where(s => s.Status == status);
+        if (!string.IsNullOrWhiteSpace(paymentMethod)) q = q.Where(s => s.PaymentMethod == paymentMethod);
+        return q.OrderByDescending(s => s.Date).ToList();
     }
 
     private List<Invoice> GetInvoicesList(int? clientId, string? status, string? paymentMethod, DateTime? dateFrom, DateTime? dateTo)

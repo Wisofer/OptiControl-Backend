@@ -11,12 +11,31 @@ namespace OptiControl.Controllers.Api;
 public class OpticsServicesController : ControllerBase
 {
     private readonly IServiceOpticaService _service;
+    private readonly IExportService _export;
 
-    public OpticsServicesController(IServiceOpticaService service) => _service = service;
+    public OpticsServicesController(IServiceOpticaService service, IExportService export)
+    {
+        _service = service;
+        _export = export;
+    }
 
     [HttpGet]
     public IActionResult GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
         => Ok(_service.GetPaged(page, pageSize, search));
+
+    [HttpGet("export/excel")]
+    public IActionResult ExportExcel([FromQuery] string? search = null)
+    {
+        var bytes = _export.GetOpticsServicesExcel(search);
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Servicios.xlsx");
+    }
+
+    [HttpGet("export/pdf")]
+    public IActionResult ExportPdf([FromQuery] string? search = null)
+    {
+        var bytes = _export.GetOpticsServicesPdf(search);
+        return File(bytes, "application/pdf", "Servicios.pdf");
+    }
 
     [HttpGet("{id:int}")]
     public IActionResult GetById(int id)

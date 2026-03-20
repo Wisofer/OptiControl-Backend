@@ -12,8 +12,13 @@ namespace OptiControl.Controllers.Api;
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _service;
+    private readonly IExportService _export;
 
-    public ProductsController(IProductService service) => _service = service;
+    public ProductsController(IProductService service, IExportService export)
+    {
+        _service = service;
+        _export = export;
+    }
 
     [HttpGet]
     public IActionResult GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
@@ -22,6 +27,20 @@ public class ProductsController : ControllerBase
     /// <summary>Productos con stock en o por debajo del stock mínimo (para alertas / banner).</summary>
     [HttpGet("low-stock")]
     public IActionResult GetLowStock() => Ok(_service.GetLowStock());
+
+    [HttpGet("export/excel")]
+    public IActionResult ExportExcel([FromQuery] string? search = null)
+    {
+        var bytes = _export.GetProductsExcel(search);
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Inventario.xlsx");
+    }
+
+    [HttpGet("export/pdf")]
+    public IActionResult ExportPdf([FromQuery] string? search = null)
+    {
+        var bytes = _export.GetProductsPdf(search);
+        return File(bytes, "application/pdf", "Inventario.pdf");
+    }
 
     [HttpGet("{id:int}")]
     public IActionResult GetById(int id)

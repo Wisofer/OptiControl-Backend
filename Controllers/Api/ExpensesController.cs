@@ -11,12 +11,31 @@ namespace OptiControl.Controllers.Api;
 public class ExpensesController : ControllerBase
 {
     private readonly IExpenseService _service;
+    private readonly IExportService _export;
 
-    public ExpensesController(IExpenseService service) => _service = service;
+    public ExpensesController(IExpenseService service, IExportService export)
+    {
+        _service = service;
+        _export = export;
+    }
 
     [HttpGet]
     public IActionResult GetAll([FromQuery] DateTime? dateFrom, [FromQuery] DateTime? dateTo, [FromQuery] string? category, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         => Ok(_service.GetPaged(dateFrom, dateTo, category, page, pageSize));
+
+    [HttpGet("export/excel")]
+    public IActionResult ExportExcel([FromQuery] DateTime? dateFrom = null, [FromQuery] DateTime? dateTo = null)
+    {
+        var bytes = _export.GetExpensesExcel(dateFrom, dateTo);
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "Egresos.xlsx");
+    }
+
+    [HttpGet("export/pdf")]
+    public IActionResult ExportPdf([FromQuery] DateTime? dateFrom = null, [FromQuery] DateTime? dateTo = null)
+    {
+        var bytes = _export.GetExpensesPdf(dateFrom, dateTo);
+        return File(bytes, "application/pdf", "Egresos.pdf");
+    }
 
     [HttpGet("{id:int}")]
     public IActionResult GetById(int id)

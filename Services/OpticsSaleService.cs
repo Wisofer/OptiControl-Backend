@@ -109,7 +109,7 @@ public class OpticsSaleService : IOpticsSaleService
         var req = _httpContext.HttpContext?.Request;
         var scheme = req?.Scheme ?? "https";
         var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
-        return $"{scheme}://{host}/api/sales-history/{saleId}/ticket-pdf";
+        return $"{scheme}://{host}/api/public/sales/{saleId}/ticket-pdf";
     }
 
     /// <summary>Ingreso real: Pagada = total, pendiente = amountPaid, cotizacion/Cancelada = 0.</summary>

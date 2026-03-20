@@ -14,6 +14,7 @@ namespace OptiControl.Controllers.Api;
 public class SalesHistoryController : ControllerBase
 {
     private readonly IOpticsSaleService _service;
+    private readonly IExportService _export;
     private readonly IInvoiceService _invoiceService;
     private readonly IInvoicePdfService _invoicePdfService;
     private readonly ISaleTicketPdfService _saleTicketPdfService;
@@ -22,6 +23,7 @@ public class SalesHistoryController : ControllerBase
 
     public SalesHistoryController(
         IOpticsSaleService service,
+        IExportService export,
         IInvoiceService invoiceService,
         IInvoicePdfService invoicePdfService,
         ISaleTicketPdfService saleTicketPdfService,
@@ -29,6 +31,7 @@ public class SalesHistoryController : ControllerBase
         IHttpContextAccessor httpContext)
     {
         _service = service;
+        _export = export;
         _invoiceService = invoiceService;
         _invoicePdfService = invoicePdfService;
         _saleTicketPdfService = saleTicketPdfService;
@@ -39,6 +42,20 @@ public class SalesHistoryController : ControllerBase
     [HttpGet]
     public IActionResult GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         => Ok(_service.GetSalesHistoryPaged(page, pageSize));
+
+    [HttpGet("export/excel")]
+    public IActionResult ExportExcel([FromQuery] DateTime? dateFrom = null, [FromQuery] DateTime? dateTo = null, [FromQuery] string? status = null, [FromQuery] string? paymentMethod = null)
+    {
+        var bytes = _export.GetSalesHistoryExcel(dateFrom, dateTo, status, paymentMethod);
+        return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "HistorialVentas.xlsx");
+    }
+
+    [HttpGet("export/pdf")]
+    public IActionResult ExportPdf([FromQuery] DateTime? dateFrom = null, [FromQuery] DateTime? dateTo = null, [FromQuery] string? status = null, [FromQuery] string? paymentMethod = null)
+    {
+        var bytes = _export.GetSalesHistoryPdf(dateFrom, dateTo, status, paymentMethod);
+        return File(bytes, "application/pdf", "HistorialVentas.pdf");
+    }
 
     [HttpGet("{id:int}")]
     public IActionResult GetById(int id)
@@ -57,7 +74,7 @@ public class SalesHistoryController : ControllerBase
         var req = _httpContext.HttpContext?.Request;
         var scheme = req?.Scheme ?? "https";
         var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
-        return Ok(new { pdfUrl = $"{scheme}://{host}/api/sales-history/{id}/ticket-pdf" });
+        return Ok(new { pdfUrl = $"{scheme}://{host}/api/public/sales/{id}/ticket-pdf" });
     }
 
     /// <summary>PDF ticket 80mm para venta/cotización.</summary>
