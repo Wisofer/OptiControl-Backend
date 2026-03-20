@@ -28,7 +28,6 @@ public class SaleTicketPdfService : ISaleTicketPdfService
         var webRoot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
         _logoPaths = new[]
         {
-            Path.Combine(webRoot, "images", "file-_1_-removebg-preview.png"),
             Path.Combine(webRoot, "images", "tulogo.png"),
             Path.Combine(webRoot, "images", "logo.png")
         };
