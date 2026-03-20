@@ -92,17 +92,22 @@ public class SaleTicketPdfService : ISaleTicketPdfService
                         c.Item().PaddingTop(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
 
                         c.Item().PaddingTop(3).Text("Producto / Servicio").Bold();
-                        c.Item().Text("Cant.  Subtotal").FontSize(7).FontColor(Colors.Grey.Darken1);
+                        c.Item().Text("Detalle                                   Subtotal")
+                            .FontSize(7).FontColor(Colors.Grey.Darken1);
 
                         foreach (var x in calc)
                         {
                             var item = x.Item;
                             var name = !string.IsNullOrWhiteSpace(item.ProductName) ? item.ProductName : item.ServiceName;
-                            c.Item().PaddingTop(2).Text(name);
+                            c.Item().PaddingTop(2).Row(r =>
+                            {
+                                r.RelativeItem().Text(name);
+                                r.RelativeItem().AlignRight().Text($"C$ {x.SubtotalNio:N2}");
+                            });
                             c.Item().Row(r =>
                             {
-                                r.RelativeItem().Text($"{item.Quantity}");
-                                r.RelativeItem().AlignRight().Text($"C$ {x.SubtotalNio:N2}");
+                                r.RelativeItem().Text($"{item.Quantity} x C$ {x.UnitNio:N2}")
+                                    .FontSize(7).FontColor(Colors.Grey.Darken1);
                             });
                         }
 

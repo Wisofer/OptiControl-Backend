@@ -15,16 +15,20 @@ public class InvoicePdfService : IInvoicePdfService
     private readonly ApplicationDbContext _context;
     private readonly ISettingsService _settings;
     private readonly ILogger<InvoicePdfService> _logger;
-    private readonly string _logoPath;
+    private readonly string[] _logoPaths;
 
     public InvoicePdfService(ApplicationDbContext context, ISettingsService settings, IWebHostEnvironment env, ILogger<InvoicePdfService> logger)
     {
         _context = context;
         _settings = settings;
         _logger = logger;
-        // Logo en wwwroot/images para orden: mismo sitio que el resto de estáticos y accesible como /images/logo.png
+        // Logo en wwwroot/images. Preferimos tulogo.png y dejamos logo.png como fallback.
         var webRoot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
-        _logoPath = Path.Combine(webRoot, "images", "logo.png");
+        _logoPaths = new[]
+        {
+            Path.Combine(webRoot, "images", "tulogo.png"),
+            Path.Combine(webRoot, "images", "logo.png")
+        };
     }
 
     public byte[]? GeneratePdf(string invoiceId)
@@ -66,9 +70,10 @@ public class InvoicePdfService : IInvoicePdfService
         static string FormatUtcDateNullable(DateTime? d) => d.HasValue ? FormatUtcDate(d.Value) : "-";
 
         byte[]? logoBytes = null;
-        if (File.Exists(_logoPath))
+        var logoPath = _logoPaths.FirstOrDefault(File.Exists);
+        if (!string.IsNullOrWhiteSpace(logoPath))
         {
-            try { logoBytes = File.ReadAllBytes(_logoPath); } catch { /* ignorar */ }
+            try { logoBytes = File.ReadAllBytes(logoPath); } catch { /* ignorar */ }
         }
 
         var doc = Document.Create(container =>
