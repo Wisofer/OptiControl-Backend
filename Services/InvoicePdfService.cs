@@ -49,7 +49,7 @@ public class InvoicePdfService : IInvoicePdfService
 
         var companyName = _settings.GetCompanyName();
         var settings = _settings.Get();
-        var currencyNio = settings?.Currency ?? "NIO";
+        var currencyNio = "NIO";
         var rate = settings?.ExchangeRate ?? 36.8m;
         // Datos de contacto de la agencia: vienen de "Datos de la Agencia" (configuración). Una línea de teléfono es fija (empresa).
         var agencyEmail = settings?.Email?.Trim() ?? "";
