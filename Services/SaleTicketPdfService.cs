@@ -45,6 +45,9 @@ public class SaleTicketPdfService : ISaleTicketPdfService
             var companyName = _settings.GetCompanyName();
             var title = string.Equals(sale.Status, "cotizacion", StringComparison.OrdinalIgnoreCase) ? "COTIZACION" : "TICKET DE VENTA";
             var settings = _settings.Get();
+            var agencyEmail = settings?.Email?.Trim() ?? "";
+            var agencyPhone = settings?.Phone?.Trim() ?? "";
+            var agencyAddress = settings?.Address?.Trim() ?? "";
             var rate = settings?.ExchangeRate ?? 36.8m;
             var isUsdSale = string.Equals(sale.Currency, "USD", StringComparison.OrdinalIgnoreCase);
             byte[]? logoBytes = null;
@@ -106,17 +109,31 @@ public class SaleTicketPdfService : ISaleTicketPdfService
                             row.RelativeItem().AlignRight().AlignMiddle()
                                 .Text($"{companyName}\n{title}").Bold().FontSize(9);
                         });
+                        c.Item().PaddingTop(3).Column(contact =>
+                        {
+                            if (!string.IsNullOrWhiteSpace(agencyEmail))
+                                contact.Item().Text(agencyEmail).FontSize(7);
+                            if (!string.IsNullOrWhiteSpace(agencyPhone))
+                                contact.Item().Text($"Tel/WhatsApp: {agencyPhone}").FontSize(7);
+                            if (!string.IsNullOrWhiteSpace(agencyAddress))
+                                contact.Item().Text(agencyAddress).FontSize(6);
+                        });
                         c.Item().PaddingTop(4).LineHorizontal(1).LineColor(Colors.Grey.Medium);
                     });
 
                     page.Content().Column(c =>
                     {
-                        c.Item().PaddingTop(4).Text($"No: V{sale.Id}");
-                        c.Item().Text($"Fecha: {sale.Date:dd/MM/yyyy HH:mm}");
+                        c.Item().PaddingTop(4).Row(r =>
+                        {
+                            r.RelativeItem().Text($"No: V{sale.Id}");
+                            r.RelativeItem().AlignRight().Text($"Estado: {sale.Status}");
+                        });
+                        c.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text($"Fecha: {sale.Date:dd/MM/yyyy HH:mm}");
+                            r.RelativeItem().AlignRight().Text($"Pago: {sale.PaymentMethod}");
+                        });
                         c.Item().Text($"Cliente: {sale.ClientName}");
-                        c.Item().Text($"Estado: {sale.Status}");
-                        if (!string.IsNullOrWhiteSpace(sale.PaymentMethod))
-                            c.Item().Text($"Forma de pago: {sale.PaymentMethod}");
                         c.Item().PaddingTop(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
 
                         c.Item().PaddingTop(3).Text("Producto / Servicio").Bold();
