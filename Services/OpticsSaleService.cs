@@ -11,21 +11,21 @@ public class OpticsSaleService : IOpticsSaleService
 {
     private readonly ApplicationDbContext _context;
     private readonly IActivityService _activity;
-    private readonly IProductService _productService;
     private readonly IInvoiceService _invoiceService;
+    private readonly ISettingsService _settingsService;
     private readonly IHttpContextAccessor _httpContext;
 
     public OpticsSaleService(
         ApplicationDbContext context,
         IActivityService activity,
-        IProductService productService,
         IInvoiceService invoiceService,
+        ISettingsService settingsService,
         IHttpContextAccessor httpContext)
     {
         _context = context;
         _activity = activity;
-        _productService = productService;
         _invoiceService = invoiceService;
+        _settingsService = settingsService;
         _httpContext = httpContext;
     }
 
@@ -60,6 +60,35 @@ public class OpticsSaleService : IOpticsSaleService
             Currency = s.Currency ?? "NIO",
             Status = s.Status ?? ""
         };
+    }
+
+    private static decimal Round2(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+    private static bool IsUsdCurrency(string? currency)
+        => string.Equals(currency, SD.CurrencyUSD, StringComparison.OrdinalIgnoreCase);
+
+    private static decimal ToSaleCurrencyFromNio(decimal nio, string? saleCurrency, decimal rate)
+    {
+        if (IsUsdCurrency(saleCurrency))
+            return rate > 0 ? Round2(nio / rate) : nio;
+        return Round2(nio);
+    }
+
+    private decimal ResolveUnitPriceNio(SaleItemDto it)
+    {
+        var type = (it.Type ?? "product").ToLowerInvariant();
+        if (type == "product" && it.ProductId.HasValue)
+        {
+            var p = _context.Products.Find(it.ProductId.Value);
+            if (p != null) return p.Precio;
+        }
+        if (type == "service" && it.ServiceId.HasValue)
+        {
+            var s = _context.ServiceOpticas.Find(it.ServiceId.Value);
+            if (s != null) return s.Precio;
+        }
+        // Fallback por compatibilidad (si no viene id, usamos lo enviado).
+        return it.UnitPrice;
     }
 
     private string BuildInvoicePdfUrl(string invoiceId)
@@ -125,36 +154,66 @@ public class OpticsSaleService : IOpticsSaleService
     public SaleResponseDto? CreateSale(CreateSaleRequestDto dto)
     {
         var isCotizacion = string.Equals(dto.Status, SD.SaleStatusCotizacion, StringComparison.OrdinalIgnoreCase);
+        var saleCurrency = dto.Currency ?? SD.CurrencyNIO;
+        var exchangeRate = _settingsService.Get()?.ExchangeRate ?? 36.8m;
         int? clientIdParsed = null;
         if (!string.IsNullOrWhiteSpace(dto.ClientId) && int.TryParse(dto.ClientId.Trim(), out var cid))
             clientIdParsed = cid;
+
+        var computedItems = new List<SaleItem>();
+        decimal totalNio = 0;
+        foreach (var it in dto.Items ?? new List<SaleItemDto>())
+        {
+            var type = (it.Type ?? "product").ToLowerInvariant();
+            var quantity = Math.Max(0, it.Quantity);
+            var productName = it.ProductName ?? "";
+            var serviceName = it.ServiceName ?? "";
+            var unitNio = ResolveUnitPriceNio(it);
+            var subtotalNio = unitNio * quantity;
+            totalNio += subtotalNio;
+
+            var unitSaleCurrency = ToSaleCurrencyFromNio(unitNio, saleCurrency, exchangeRate);
+            var subtotalSaleCurrency = Round2(unitSaleCurrency * quantity);
+
+            computedItems.Add(new SaleItem
+            {
+                Type = type,
+                ProductId = it.ProductId,
+                ServiceId = it.ServiceId,
+                ProductName = productName,
+                ServiceName = serviceName,
+                Quantity = quantity,
+                UnitPrice = unitSaleCurrency,
+                Subtotal = subtotalSaleCurrency
+            });
+        }
+
+        var totalSaleCurrency = Round2(computedItems.Sum(x => x.Subtotal));
+        var amountPaidSaleCurrency = isCotizacion ? 0 : Round2(dto.AmountPaid);
+        var saleStatus = isCotizacion ? SD.SaleStatusCotizacion : (amountPaidSaleCurrency >= totalSaleCurrency ? SD.SaleStatusPagada : SD.SaleStatusPendiente);
 
         var sale = new Sale
         {
             ClientId = clientIdParsed,
             ClientName = dto.ClientName ?? "",
             Date = DateTime.UtcNow,
-            Total = dto.Total,
-            AmountPaid = isCotizacion ? 0 : dto.AmountPaid,
+            Total = totalSaleCurrency,
+            AmountPaid = amountPaidSaleCurrency,
             PaymentMethod = dto.PaymentMethod,
-            Currency = dto.Currency ?? "NIO",
-            Status = isCotizacion ? SD.SaleStatusCotizacion : (dto.AmountPaid >= dto.Total ? SD.SaleStatusPagada : SD.SaleStatusPendiente)
+            Currency = saleCurrency,
+            Status = saleStatus
         };
         _context.Sales.Add(sale);
         _context.SaveChanges();
 
-        foreach (var it in dto.Items ?? new List<SaleItemDto>())
+        foreach (var item in computedItems)
         {
-            var type = (it.Type ?? "product").ToLowerInvariant();
-            var quantity = Math.Max(0, it.Quantity);
-            var unitPrice = it.UnitPrice;
-            var subtotal = it.Subtotal;
-            var productName = it.ProductName ?? "";
-            var serviceName = it.ServiceName ?? "";
+            var type = item.Type;
+            var quantity = item.Quantity;
 
-            if (type == "product" && it.ProductId.HasValue && quantity > 0 && !isCotizacion)
+            if (type == "product" && item.ProductId.HasValue && quantity > 0 && !isCotizacion)
             {
-                var product = _context.Products.Find(it.ProductId.Value);
+                var product = _context.Products.Find(item.ProductId.Value);
                 if (product != null)
                 {
                     if (product.Stock < quantity)
@@ -172,13 +231,13 @@ public class OpticsSaleService : IOpticsSaleService
             {
                 SaleId = sale.Id,
                 Type = type,
-                ProductId = it.ProductId,
-                ServiceId = it.ServiceId,
-                ProductName = productName,
-                ServiceName = serviceName,
+                ProductId = item.ProductId,
+                ServiceId = item.ServiceId,
+                ProductName = item.ProductName,
+                ServiceName = item.ServiceName,
                 Quantity = quantity,
-                UnitPrice = unitPrice,
-                Subtotal = subtotal
+                UnitPrice = item.UnitPrice,
+                Subtotal = item.Subtotal
             });
         }
         _context.SaveChanges();
@@ -197,6 +256,16 @@ public class OpticsSaleService : IOpticsSaleService
         response.InvoicePublicPdfUrl = invoiceResult.InvoicePublicPdfUrl;
         // Para ventas pagadas usamos un solo PDF canónico (factura) para imprimir/compartir.
         response.SaleTicketPdfUrl = invoiceResult.InvoicePdfUrl ?? BuildSaleTicketPdfUrl(sale.Id);
+        var totalUsd = exchangeRate > 0 ? Round2(totalNio / exchangeRate) : totalNio;
+        var amountPaidNio = IsUsdCurrency(saleCurrency) ? Round2(amountPaidSaleCurrency * exchangeRate) : amountPaidSaleCurrency;
+        var amountPaidUsd = IsUsdCurrency(saleCurrency) ? amountPaidSaleCurrency : (exchangeRate > 0 ? Round2(amountPaidSaleCurrency / exchangeRate) : amountPaidSaleCurrency);
+        response.ExchangeRate = exchangeRate;
+        response.TotalNio = Round2(totalNio);
+        response.TotalUsd = totalUsd;
+        response.AmountPaidNio = amountPaidNio;
+        response.AmountPaidUsd = amountPaidUsd;
+        response.ChangeDue = amountPaidSaleCurrency > totalSaleCurrency ? Round2(amountPaidSaleCurrency - totalSaleCurrency) : 0;
+        response.ChangeCurrency = saleCurrency;
         return response;
     }
 

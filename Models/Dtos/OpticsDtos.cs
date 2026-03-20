@@ -140,6 +140,20 @@ public class SaleResponseDto
     public string? InvoicePublicPdfUrl { get; set; }
     [JsonPropertyName("saleTicketPdfUrl")]
     public string? SaleTicketPdfUrl { get; set; }
+    [JsonPropertyName("exchangeRate")]
+    public decimal? ExchangeRate { get; set; }
+    [JsonPropertyName("totalNio")]
+    public decimal? TotalNio { get; set; }
+    [JsonPropertyName("totalUsd")]
+    public decimal? TotalUsd { get; set; }
+    [JsonPropertyName("amountPaidNio")]
+    public decimal? AmountPaidNio { get; set; }
+    [JsonPropertyName("amountPaidUsd")]
+    public decimal? AmountPaidUsd { get; set; }
+    [JsonPropertyName("changeDue")]
+    public decimal? ChangeDue { get; set; }
+    [JsonPropertyName("changeCurrency")]
+    public string? ChangeCurrency { get; set; }
 }
 
 /// <summary>Actividad reciente para dashboard (spec).</summary>

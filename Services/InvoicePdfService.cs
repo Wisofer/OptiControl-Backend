@@ -121,10 +121,13 @@ public class InvoicePdfService : IInvoicePdfService
                         column.Item().Text($"Tel: {client.Phone}");
                     column.Item().PaddingTop(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
 
-                    // ----- Concepto -----
-                    column.Item().PaddingTop(4).Text("CONCEPTO").Bold().FontSize(9);
-                    column.Item().PaddingTop(1).Text(string.IsNullOrWhiteSpace(invoice.Concept) ? "-" : invoice.Concept);
-                    column.Item().PaddingTop(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+                    // ----- Concepto (opcional) -----
+                    if (!string.IsNullOrWhiteSpace(invoice.Concept))
+                    {
+                        column.Item().PaddingTop(4).Text("CONCEPTO").Bold().FontSize(9);
+                        column.Item().PaddingTop(1).Text(invoice.Concept);
+                        column.Item().PaddingTop(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
+                    }
 
                     // ----- Forma de pago -----
                     if (!string.IsNullOrWhiteSpace(invoice.PaymentMethod))
