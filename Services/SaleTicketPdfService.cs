@@ -137,8 +137,13 @@ public class SaleTicketPdfService : ISaleTicketPdfService
                         c.Item().PaddingTop(3).LineHorizontal(0.5f).LineColor(Colors.Grey.Lighten2);
 
                         c.Item().PaddingTop(3).Text("Producto / Servicio").Bold();
-                        c.Item().Text("Detalle                                   Subtotal")
-                            .FontSize(7).FontColor(Colors.Grey.Darken1);
+                        c.Item().Row(r =>
+                        {
+                            r.RelativeItem().Text("Detalle")
+                                .FontSize(7).FontColor(Colors.Grey.Darken1);
+                            r.RelativeItem().AlignRight().Text("Subtotal")
+                                .FontSize(7).FontColor(Colors.Grey.Darken1);
+                        });
 
                         foreach (var x in calc)
                         {
