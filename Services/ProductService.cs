@@ -30,6 +30,7 @@ public class ProductService : IProductService
             Precio = p.Precio,
             Stock = p.Stock,
             StockMinimo = p.StockMinimo,
+            StockBajo = p.Stock <= p.StockMinimo,
             FechaCreacion = p.FechaCreacion.ToString("yyyy-MM-dd"),
             Descripcion = p.Descripcion,
             Proveedor = p.Proveedor
@@ -98,6 +99,24 @@ public class ProductService : IProductService
         return ToDto(existing);
     }
 
+    public ProductResponseDto? Restock(int id, int cantidad)
+    {
+        if (cantidad <= 0) return null;
+        var existing = _context.Products.Find(id);
+        if (existing == null) return null;
+        checked
+        {
+            existing.Stock = existing.Stock + cantidad;
+        }
+        _context.SaveChanges();
+        _activity.Record(
+            SD.ActivityTypeInventory,
+            $"Reabastecimiento: +{cantidad} uds. → stock {existing.Stock} ({existing.NombreProducto})",
+            id.ToString(),
+            null);
+        return ToDto(existing);
+    }
+
     public bool Delete(int id)
     {
         var p = _context.Products.Find(id);
@@ -112,7 +131,7 @@ public class ProductService : IProductService
     public List<ProductResponseDto> GetLowStock()
     {
         return _context.Products
-            .Where(p => p.Stock < p.StockMinimo)
+            .Where(p => p.Stock <= p.StockMinimo)
             .OrderBy(p => p.Stock)
             .ToList()
             .Select(ToDto)

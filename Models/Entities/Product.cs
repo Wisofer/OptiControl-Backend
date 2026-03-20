@@ -12,7 +12,7 @@ public class Product
     /// <summary>Precio de venta al cliente.</summary>
     public decimal Precio { get; set; }
     public int Stock { get; set; }
-    /// <summary>Stock mínimo recomendado; si Stock &lt; StockMinimo se puede alertar.</summary>
+    /// <summary>Stock mínimo recomendado; alertar si Stock &lt;= StockMinimo.</summary>
     public int StockMinimo { get; set; }
     public DateTime FechaCreacion { get; set; }
     /// <summary>Descripción o especificaciones del producto.</summary>

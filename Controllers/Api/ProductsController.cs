@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OptiControl.Models.Dtos;
 using OptiControl.Models.Entities;
 using OptiControl.Services.IServices;
 
@@ -18,7 +19,7 @@ public class ProductsController : ControllerBase
     public IActionResult GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] string? search = null)
         => Ok(_service.GetPaged(page, pageSize, search));
 
-    /// <summary>Productos con stock actual por debajo del stock mínimo (para alertas).</summary>
+    /// <summary>Productos con stock en o por debajo del stock mínimo (para alertas / banner).</summary>
     [HttpGet("low-stock")]
     public IActionResult GetLowStock() => Ok(_service.GetLowStock());
 
@@ -44,6 +45,17 @@ public class ProductsController : ControllerBase
     {
         if (product == null) return BadRequest();
         var updated = _service.Update(id, product);
+        if (updated == null) return NotFound();
+        return Ok(updated);
+    }
+
+    /// <summary>Suma unidades al stock (reponer) sin enviar el producto completo.</summary>
+    [HttpPost("{id:int}/restock")]
+    public IActionResult Restock(int id, [FromBody] RestockProductRequestDto? body)
+    {
+        if (body == null || body.Cantidad <= 0)
+            return BadRequest(new { error = "cantidad debe ser un entero mayor que 0." });
+        var updated = _service.Restock(id, body.Cantidad);
         if (updated == null) return NotFound();
         return Ok(updated);
     }

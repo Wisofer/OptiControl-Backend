@@ -30,6 +30,8 @@ public class MobileProductDto
     public int Stock { get; set; }
     [JsonPropertyName("stockMinimo")]
     public int StockMinimo { get; set; }
+    [JsonPropertyName("stockBajo")]
+    public bool StockBajo { get; set; }
     [JsonPropertyName("type")]
     public string Type { get; set; } = "";
 }

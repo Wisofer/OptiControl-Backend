@@ -21,12 +21,23 @@ public class ProductResponseDto
     public int Stock { get; set; }
     [JsonPropertyName("stock_minimo")]
     public int StockMinimo { get; set; }
+    /// <summary>True si el stock actual está en o por debajo del mínimo (para resaltar en UI / alertas).</summary>
+    [JsonPropertyName("stock_bajo")]
+    public bool StockBajo { get; set; }
     [JsonPropertyName("fecha_creacion")]
     public string FechaCreacion { get; set; } = "";
     [JsonPropertyName("descripcion")]
     public string? Descripcion { get; set; }
     [JsonPropertyName("proveedor")]
     public string? Proveedor { get; set; }
+}
+
+/// <summary>Entrada para reponer inventario sin editar el producto completo.</summary>
+public class RestockProductRequestDto
+{
+    /// <summary>Cantidad positiva a sumar al stock actual.</summary>
+    [JsonPropertyName("cantidad")]
+    public int Cantidad { get; set; }
 }
 
 /// <summary>Respuesta de servicio óptica según spec (snake_case).</summary>
