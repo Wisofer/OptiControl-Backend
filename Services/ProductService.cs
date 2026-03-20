@@ -72,7 +72,7 @@ public class ProductService : IProductService
     public ProductResponseDto Create(Product product)
     {
         if (product.FechaCreacion == default)
-            product.FechaCreacion = DateTime.UtcNow.Date;
+            product.FechaCreacion = TimeZoneHelper.NicaraguaToday();
         _context.Products.Add(product);
         _context.SaveChanges();
         _activity.Record(SD.ActivityTypeProduct, $"Producto agregado: {product.NombreProducto}", product.Id.ToString(), null);

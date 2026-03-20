@@ -1,6 +1,7 @@
 using OptiControl.Data;
 using OptiControl.Models.Entities;
 using OptiControl.Services.IServices;
+using OptiControl.Utils;
 
 namespace OptiControl.Services;
 
@@ -43,7 +44,7 @@ public class SettingsService : ISettingsService
             existing.AlertsReservacionesPendientes = settings.AlertsReservacionesPendientes;
             existing.AlertsFacturasVencidas = settings.AlertsFacturasVencidas;
             existing.AlertsRecordatorios = settings.AlertsRecordatorios;
-            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedAt = TimeZoneHelper.UtcNow();
         }
         _context.SaveChanges();
     }

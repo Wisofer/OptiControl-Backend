@@ -341,7 +341,7 @@ public class ExportService : IExportService
                         r.RelativeItem().Column(c => { c.Item().Text("Balance").FontSize(11).FontColor(Colors.Grey.Darken1); c.Item().Text($"{balance:N2} {currency}").Bold().FontSize(14).FontColor(balance >= 0 ? Colors.Green.Darken2 : Colors.Red.Darken2); });
                     });
                 });
-                page.Footer().AlignCenter().DefaultTextStyle(x => x.FontSize(8).FontColor(Colors.Grey.Medium)).Text(x => { x.Span("OptiControl · "); x.Span(DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm")); });
+                page.Footer().AlignCenter().DefaultTextStyle(x => x.FontSize(8).FontColor(Colors.Grey.Medium)).Text(x => { x.Span("OptiControl · "); x.Span(TimeZoneHelper.NicaraguaNow().ToString("dd/MM/yyyy HH:mm")); });
             });
         });
         return doc.GeneratePdf();
@@ -355,7 +355,7 @@ public class ExportService : IExportService
 
     private (DateTime from, DateTime to) NormalizeDateRange(DateTime? dateFrom, DateTime? dateTo)
     {
-        var to = dateTo ?? DateTime.UtcNow.Date;
+        var to = dateTo ?? TimeZoneHelper.NicaraguaToday();
         var from = dateFrom ?? to.AddYears(-1);
         return (from, to);
     }
@@ -477,7 +477,7 @@ public class ExportService : IExportService
                 page.Footer().AlignCenter().DefaultTextStyle(x => x.FontSize(8).FontColor(Colors.Grey.Medium)).Text(x =>
                 {
                     x.Span("Documento generado por OptiControl · ");
-                    x.Span(DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm"));
+                    x.Span(TimeZoneHelper.NicaraguaNow().ToString("dd/MM/yyyy HH:mm"));
                 });
             });
         });

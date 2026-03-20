@@ -44,7 +44,7 @@ public class SaleService : ISaleService
     public Sale Create(Sale sale)
     {
         sale.Status = sale.Status ?? SD.SaleStatusCompletado;
-        sale.Date = sale.Date == default ? DateTime.UtcNow.Date : sale.Date;
+        sale.Date = sale.Date == default ? TimeZoneHelper.NicaraguaToday() : sale.Date;
         _context.Sales.Add(sale);
         _context.SaveChanges();
         var client = sale.ClientId.HasValue ? _context.Clients.Find(sale.ClientId.Value) : null;

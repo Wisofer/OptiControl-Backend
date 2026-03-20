@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OptiControl.Models.Entities;
 using OptiControl.Services.IServices;
+using OptiControl.Utils;
 
 namespace OptiControl.Controllers.Api;
 
@@ -58,7 +59,7 @@ public class ClientsController : ControllerBase
     {
         if (client == null || string.IsNullOrWhiteSpace(client.Name))
             return BadRequest();
-        if (client.FechaRegistro == default) client.FechaRegistro = DateTime.UtcNow.Date;
+        if (client.FechaRegistro == default) client.FechaRegistro = TimeZoneHelper.NicaraguaToday();
         var created = _service.Create(client);
         var optics = _service.GetByIdOptics(created.Id);
         return CreatedAtAction(nameof(GetById), new { id = created.Id }, optics);

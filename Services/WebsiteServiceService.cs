@@ -1,6 +1,7 @@
 using OptiControl.Data;
 using OptiControl.Models.Entities;
 using OptiControl.Services.IServices;
+using OptiControl.Utils;
 
 namespace OptiControl.Services;
 
@@ -20,8 +21,8 @@ public class WebsiteServiceService : IWebsiteServiceService
 
     public WebsiteService Create(WebsiteService service)
     {
-        service.CreatedAt = DateTime.UtcNow;
-        service.UpdatedAt = DateTime.UtcNow;
+        service.CreatedAt = TimeZoneHelper.UtcNow();
+        service.UpdatedAt = TimeZoneHelper.UtcNow();
         _context.WebsiteServices.Add(service);
         _context.SaveChanges();
         return service;
@@ -37,7 +38,7 @@ public class WebsiteServiceService : IWebsiteServiceService
         existing.SortOrder = service.SortOrder;
         existing.IsActive = service.IsActive;
         existing.Icon = service.Icon;
-        existing.UpdatedAt = DateTime.UtcNow;
+        existing.UpdatedAt = TimeZoneHelper.UtcNow();
         _context.SaveChanges();
         return true;
     }

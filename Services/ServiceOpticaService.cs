@@ -63,7 +63,7 @@ public class ServiceOpticaService : IServiceOpticaService
     public ServiceOpticaResponseDto Create(ServiceOptica service)
     {
         if (service.FechaCreacion == default)
-            service.FechaCreacion = DateTime.UtcNow.Date;
+            service.FechaCreacion = TimeZoneHelper.NicaraguaToday();
         _context.ServiceOpticas.Add(service);
         _context.SaveChanges();
         _activity.Record(SD.ActivityTypeService, $"Servicio agregado: {service.NombreServicio}", service.Id.ToString(), null);

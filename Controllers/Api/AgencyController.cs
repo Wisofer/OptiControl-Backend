@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using OptiControl.Models.Dtos;
 using OptiControl.Models.Entities;
 using OptiControl.Services.IServices;
+using OptiControl.Utils;
 
 namespace OptiControl.Controllers.Api;
 
@@ -83,7 +84,7 @@ public class AgencyController : ControllerBase
             existing.Address = dto.Address?.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Currency))
                 existing.Currency = dto.Currency.Trim();
-            existing.UpdatedAt = DateTime.UtcNow;
+            existing.UpdatedAt = TimeZoneHelper.UtcNow();
             _settings.Save(existing);
         }
         var updated = _settings.Get();

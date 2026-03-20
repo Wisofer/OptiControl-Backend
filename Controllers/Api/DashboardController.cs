@@ -67,7 +67,7 @@ public class DashboardController : ControllerBase
     public IActionResult GetAlerts()
     {
         var settings = _settings.Get();
-        var today = DateTime.UtcNow.Date;
+        var today = TimeZoneHelper.NicaraguaToday();
 
         // Facturas vencidas (solo si AlertsFacturasVencidas está activa)
         var overdueInvoices = Array.Empty<OverdueInvoiceAlertDto>();

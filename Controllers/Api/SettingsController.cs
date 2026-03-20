@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OptiControl.Models.Entities;
 using OptiControl.Services.IServices;
+using OptiControl.Utils;
 
 namespace OptiControl.Controllers.Api;
 
@@ -84,7 +85,7 @@ public class SettingsController : ControllerBase
         if (body.TryGetProperty("alertsRecordatorios", out var a3) && (a3.ValueKind == JsonValueKind.True || a3.ValueKind == JsonValueKind.False))
             existing.AlertsRecordatorios = a3.GetBoolean();
 
-        existing.UpdatedAt = DateTime.UtcNow;
+        existing.UpdatedAt = TimeZoneHelper.UtcNow();
         _settings.Save(existing);
         return Ok(existing);
     }

@@ -35,7 +35,7 @@ public class ExpenseService : IExpenseService
     public Expense Create(Expense expense)
     {
         expense.Category = expense.Category ?? SD.ExpenseCategoryOperativo;
-        expense.Date = expense.Date == default ? DateTime.UtcNow.Date : expense.Date;
+        expense.Date = expense.Date == default ? TimeZoneHelper.NicaraguaToday() : expense.Date;
         _context.Expenses.Add(expense);
         _context.SaveChanges();
         _activity.Record(SD.ActivityTypeExpense, $"Egreso: {expense.Concept} - {expense.Amount:N2}", expense.Id.ToString(), null);

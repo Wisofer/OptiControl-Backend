@@ -45,7 +45,7 @@ public class OpticsSaleService : IOpticsSaleService
     {
         return new SalePaymentDto
         {
-            Date = p.Date.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            Date = TimeZoneHelper.NicaraguaIso(p.Date),
             Amount = p.Amount,
             PaymentType = p.PaymentType,
             Bank = p.Bank
@@ -62,7 +62,7 @@ public class OpticsSaleService : IOpticsSaleService
         return new SaleResponseDto
         {
             Id = "V" + s.Id,
-            Date = s.Date.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            Date = TimeZoneHelper.NicaraguaIso(s.Date),
             ClientId = s.ClientId?.ToString() ?? "",
             ClientName = s.ClientName,
             Items = items,
@@ -167,7 +167,7 @@ public class OpticsSaleService : IOpticsSaleService
         {
             ClientId = clientIdParsed,
             ClientName = dto.ClientName ?? "",
-            Date = DateTime.UtcNow,
+            Date = TimeZoneHelper.UtcNow(),
             Total = totalSaleCurrency,
             AmountPaid = amountPaidSaleCurrency,
             PaymentMethod = dto.PaymentMethod,
@@ -327,7 +327,7 @@ public class OpticsSaleService : IOpticsSaleService
         _context.SalePayments.Add(new SalePayment
         {
             SaleId = sale.Id,
-            Date = DateTime.UtcNow,
+            Date = TimeZoneHelper.UtcNow(),
             Amount = addPayment,
             PaymentType = string.IsNullOrWhiteSpace(paymentType) ? sale.PaymentMethod : paymentType,
             Bank = string.IsNullOrWhiteSpace(bank) ? null : bank.Trim()

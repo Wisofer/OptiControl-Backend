@@ -3,6 +3,7 @@ using OptiControl.Models.Dtos;
 using OptiControl.Models.Entities;
 using OptiControl.Services.IServices;
 using Microsoft.EntityFrameworkCore;
+using OptiControl.Utils;
 
 namespace OptiControl.Services;
 
@@ -51,7 +52,7 @@ public class ActivityService : IActivityService
         {
             Type = type,
             Description = description,
-            Time = DateTime.UtcNow,
+            Time = TimeZoneHelper.UtcNow(),
             EntityId = entityId,
             ClientId = clientId
         });

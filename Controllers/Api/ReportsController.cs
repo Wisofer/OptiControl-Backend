@@ -31,7 +31,7 @@ public class ReportsController : ControllerBase
 
     private static (DateTime from, DateTime to) NormalizeRange(DateTime? dateFrom, DateTime? dateTo)
     {
-        var to = dateTo ?? DateTime.UtcNow.Date;
+        var to = dateTo ?? TimeZoneHelper.NicaraguaToday();
         var from = dateFrom ?? to.AddYears(-1);
         return (from, to);
     }
@@ -49,7 +49,7 @@ public class ReportsController : ControllerBase
     {
         DateTime? from = DateTime.TryParse(dateFrom, out var df) ? df : null;
         DateTime? to = DateTime.TryParse(dateTo, out var dt) ? dt : null;
-        if (!from.HasValue || !to.HasValue) { from = DateTime.UtcNow.Date.AddMonths(-1); to = DateTime.UtcNow.Date; }
+        if (!from.HasValue || !to.HasValue) { from = TimeZoneHelper.NicaraguaToday().AddMonths(-1); to = TimeZoneHelper.NicaraguaToday(); }
         var allSales = _opticsSaleService.GetSalesHistoryPaged(1, 10000);
         var filtered = allSales.Items.Where(s =>
         {

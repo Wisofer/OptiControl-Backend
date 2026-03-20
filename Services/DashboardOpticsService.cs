@@ -29,7 +29,7 @@ public class DashboardOpticsService : IDashboardOpticsService
 
     public DashboardSummaryDto GetSummary()
     {
-        var today = DateTime.UtcNow.Date;
+        var today = TimeZoneHelper.NicaraguaToday();
         var startOfMonth = new DateTime(today.Year, today.Month, 1);
         var rate = _settings.Get()?.ExchangeRate ?? 36.8m;
 
@@ -70,7 +70,7 @@ public class DashboardOpticsService : IDashboardOpticsService
 
     public List<MonthlyIncomeDto> GetMonthlyIncome(int months = 12)
     {
-        var end = DateTime.UtcNow.Date;
+        var end = TimeZoneHelper.NicaraguaToday();
         var start = end.AddMonths(-months);
         var rate = _settings.Get()?.ExchangeRate ?? 36.8m;
         var sales = _context.Sales

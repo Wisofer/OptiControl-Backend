@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OptiControl.Models.Entities;
 using OptiControl.Services.IServices;
+using OptiControl.Utils;
 
 namespace OptiControl.Controllers.Api;
 
@@ -17,8 +18,8 @@ public class CajaController : ControllerBase
     [HttpGet]
     public IActionResult GetByRange([FromQuery] DateTime? dateFrom, [FromQuery] DateTime? dateTo)
     {
-        var from = dateFrom ?? DateTime.UtcNow.Date.AddMonths(-1);
-        var to = dateTo ?? DateTime.UtcNow.Date;
+        var from = dateFrom ?? TimeZoneHelper.NicaraguaToday().AddMonths(-1);
+        var to = dateTo ?? TimeZoneHelper.NicaraguaToday();
         return Ok(_service.GetByRange(from, to));
     }
 

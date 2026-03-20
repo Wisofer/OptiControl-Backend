@@ -149,8 +149,8 @@ public class SalesHistoryController : ControllerBase
         var invoice = new Invoice
         {
             ClientId = sale.ClientId.Value,
-            Date = DateTime.UtcNow,
-            DueDate = request?.DueDate?.Date ?? DateTime.UtcNow.Date.AddDays(7),
+            Date = TimeZoneHelper.UtcNow(),
+            DueDate = request?.DueDate?.Date ?? TimeZoneHelper.NicaraguaToday().AddDays(7),
             Amount = sale.Total,
             Status = SaleInvoiceHelper.IsPaidSale(sale.Status) ? SD.InvoiceStatusPagado : SD.InvoiceStatusPendiente,
             Concept = concept,

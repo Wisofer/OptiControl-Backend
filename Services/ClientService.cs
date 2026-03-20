@@ -32,7 +32,7 @@ public class ClientService : IClientService
             Address = c.Address,
             GraduacionOd = c.GraduacionOd,
             GraduacionOi = c.GraduacionOi,
-            FechaRegistro = c.FechaRegistro?.ToString("yyyy-MM-dd", EsNi) ?? DateTime.UtcNow.Date.ToString("yyyy-MM-dd", EsNi),
+            FechaRegistro = c.FechaRegistro?.ToString("yyyy-MM-dd", EsNi) ?? TimeZoneHelper.NicaraguaToday().ToString("yyyy-MM-dd", EsNi),
             Email = c.Email,
             Descripcion = c.Descripcion
         };

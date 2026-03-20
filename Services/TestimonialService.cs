@@ -1,6 +1,7 @@
 using OptiControl.Data;
 using OptiControl.Models.Entities;
 using OptiControl.Services.IServices;
+using OptiControl.Utils;
 
 namespace OptiControl.Services;
 
@@ -23,8 +24,8 @@ public class TestimonialService : ITestimonialService
 
     public Testimonial Create(Testimonial testimonial)
     {
-        testimonial.CreatedAt = DateTime.UtcNow;
-        testimonial.UpdatedAt = DateTime.UtcNow;
+        testimonial.CreatedAt = TimeZoneHelper.UtcNow();
+        testimonial.UpdatedAt = TimeZoneHelper.UtcNow();
         NormalizeRating(testimonial);
         _context.Testimonials.Add(testimonial);
         _context.SaveChanges();
@@ -42,7 +43,7 @@ public class TestimonialService : ITestimonialService
         existing.SortOrder = testimonial.SortOrder;
         existing.IsActive = testimonial.IsActive;
         existing.IsApproved = testimonial.IsApproved;
-        existing.UpdatedAt = DateTime.UtcNow;
+        existing.UpdatedAt = TimeZoneHelper.UtcNow();
         _context.SaveChanges();
         return true;
     }
@@ -61,7 +62,7 @@ public class TestimonialService : ITestimonialService
         var t = _context.Testimonials.Find(id);
         if (t == null) return false;
         t.IsApproved = approved;
-        t.UpdatedAt = DateTime.UtcNow;
+        t.UpdatedAt = TimeZoneHelper.UtcNow();
         _context.SaveChanges();
         return true;
     }

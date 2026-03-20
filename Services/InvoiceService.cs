@@ -21,7 +21,7 @@ public class InvoiceService : IInvoiceService
     /// <summary>Marca como Vencida las facturas Pendientes cuya fecha de vencimiento ya pasó.</summary>
     private void MarkOverdueInvoices()
     {
-        var today = DateTime.UtcNow.Date;
+        var today = TimeZoneHelper.NicaraguaToday();
         var overdue = _context.Invoices
             .Where(i => i.Status == SD.InvoiceStatusPendiente && i.DueDate.HasValue && i.DueDate.Value.Date < today)
             .ToList();
@@ -47,7 +47,7 @@ public class InvoiceService : IInvoiceService
     public Invoice? GetById(string id)
     {
         var invoice = _context.Invoices.Include(i => i.Client).FirstOrDefault(i => i.Id == id);
-        if (invoice != null && invoice.Status == SD.InvoiceStatusPendiente && invoice.DueDate.HasValue && invoice.DueDate.Value.Date < DateTime.UtcNow.Date)
+        if (invoice != null && invoice.Status == SD.InvoiceStatusPendiente && invoice.DueDate.HasValue && invoice.DueDate.Value.Date < TimeZoneHelper.NicaraguaToday())
         {
             invoice.Status = SD.InvoiceStatusVencida;
             _context.SaveChanges();
@@ -86,7 +86,7 @@ public class InvoiceService : IInvoiceService
         if (string.IsNullOrEmpty(invoice.Id))
             invoice.Id = GetNextInvoiceCode();
         invoice.Status = invoice.Status ?? SD.InvoiceStatusPendiente;
-        var dateOnly = invoice.Date == default ? DateTime.UtcNow.Date : invoice.Date.Date;
+        var dateOnly = invoice.Date == default ? TimeZoneHelper.NicaraguaToday() : invoice.Date.Date;
         invoice.Date = ToUtcNoon(dateOnly);
         invoice.DueDate = ToUtcNoonNullable(invoice.DueDate);
         invoice.TravelDate = ToUtcNoonNullable(invoice.TravelDate);
