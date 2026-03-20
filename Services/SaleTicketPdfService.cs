@@ -1,3 +1,5 @@
+using System.IO;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using OptiControl.Data;
 using OptiControl.Services.IServices;
@@ -12,12 +14,23 @@ public class SaleTicketPdfService : ISaleTicketPdfService
     private readonly ApplicationDbContext _context;
     private readonly ISettingsService _settings;
     private readonly ILogger<SaleTicketPdfService> _logger;
+    private readonly string[] _logoPaths;
 
-    public SaleTicketPdfService(ApplicationDbContext context, ISettingsService settings, ILogger<SaleTicketPdfService> logger)
+    public SaleTicketPdfService(
+        ApplicationDbContext context,
+        ISettingsService settings,
+        IWebHostEnvironment env,
+        ILogger<SaleTicketPdfService> logger)
     {
         _context = context;
         _settings = settings;
         _logger = logger;
+        var webRoot = env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot");
+        _logoPaths = new[]
+        {
+            Path.Combine(webRoot, "images", "tulogo.png"),
+            Path.Combine(webRoot, "images", "logo.png")
+        };
     }
 
     public byte[]? GeneratePdf(int saleId)
@@ -34,6 +47,12 @@ public class SaleTicketPdfService : ISaleTicketPdfService
             var settings = _settings.Get();
             var rate = settings?.ExchangeRate ?? 36.8m;
             var isUsdSale = string.Equals(sale.Currency, "USD", StringComparison.OrdinalIgnoreCase);
+            byte[]? logoBytes = null;
+            var logoPath = _logoPaths.FirstOrDefault(File.Exists);
+            if (!string.IsNullOrWhiteSpace(logoPath))
+            {
+                try { logoBytes = File.ReadAllBytes(logoPath); } catch { /* ignorar */ }
+            }
 
             // Base de negocio en C$: intentamos usar catálogo actual; si no hay id, convertimos desde la moneda de la venta.
             var productIds = sale.SaleItems.Where(x => x.ProductId.HasValue).Select(x => x.ProductId!.Value).Distinct().ToList();
@@ -77,7 +96,16 @@ public class SaleTicketPdfService : ISaleTicketPdfService
 
                     page.Header().Column(c =>
                     {
-                        c.Item().AlignCenter().Text($"{companyName}\n{title}").Bold().FontSize(10);
+                        c.Item().Row(row =>
+                        {
+                            row.ConstantItem(64).AlignLeft().Element(x =>
+                            {
+                                if (logoBytes != null && logoBytes.Length > 0)
+                                    x.Width(64).MaxHeight(26).Image(logoBytes).FitArea();
+                            });
+                            row.RelativeItem().AlignRight().AlignMiddle()
+                                .Text($"{companyName}\n{title}").Bold().FontSize(9);
+                        });
                         c.Item().PaddingTop(4).LineHorizontal(1).LineColor(Colors.Grey.Medium);
                     });
 
