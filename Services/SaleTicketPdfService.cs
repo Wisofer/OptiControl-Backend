@@ -66,9 +66,6 @@ public class SaleTicketPdfService : ISaleTicketPdfService
 
             var totalNio = calc.Sum(x => x.SubtotalNio);
             var totalUsd = rate > 0 ? Math.Round(totalNio / rate, 2, MidpointRounding.AwayFromZero) : totalNio;
-            var amountPaidNio = isUsdSale ? Math.Round(sale.AmountPaid * rate, 2, MidpointRounding.AwayFromZero) : sale.AmountPaid;
-            var amountPaidUsd = isUsdSale ? sale.AmountPaid : (rate > 0 ? Math.Round(sale.AmountPaid / rate, 2, MidpointRounding.AwayFromZero) : sale.AmountPaid);
-            var changeNio = amountPaidNio > totalNio ? Math.Round(amountPaidNio - totalNio, 2, MidpointRounding.AwayFromZero) : 0m;
 
             var doc = Document.Create(container =>
             {
@@ -119,8 +116,6 @@ public class SaleTicketPdfService : ISaleTicketPdfService
                         if (isUsdSale)
                         {
                             c.Item().PaddingTop(1).AlignRight().Text($"Equiv. USD {totalUsd:N2} (TC {rate:N2})").FontSize(8);
-                            c.Item().PaddingTop(1).AlignRight().Text($"Pagó: USD {amountPaidUsd:N2}").FontSize(8);
-                            c.Item().PaddingTop(1).AlignRight().Text($"Vuelto: C$ {changeNio:N2}").FontSize(8);
                         }
                     });
                 });
