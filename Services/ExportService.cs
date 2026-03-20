@@ -25,13 +25,29 @@ public class ExportService : IExportService
         var list = GetClientsList(search);
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Clientes");
-        ws.Cell(1, 1).Value = "Pasaporte"; ws.Cell(1, 2).Value = "Nombre"; ws.Cell(1, 3).Value = "Correo"; ws.Cell(1, 4).Value = "Teléfono";
-        var headerRow = ws.Range(1, 1, 1, 4);
+        ws.Cell(1, 1).Value = "Código";
+        ws.Cell(1, 2).Value = "Nombre";
+        ws.Cell(1, 3).Value = "Correo";
+        ws.Cell(1, 4).Value = "Teléfono";
+        ws.Cell(1, 5).Value = "Dirección";
+        ws.Cell(1, 6).Value = "Graduación OD";
+        ws.Cell(1, 7).Value = "Graduación OI";
+        ws.Cell(1, 8).Value = "Fecha registro";
+        ws.Cell(1, 9).Value = "Estado";
+        var headerRow = ws.Range(1, 1, 1, 9);
         headerRow.Style.Font.Bold = true; headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
         var row = 2;
         foreach (var c in list)
         {
-            ws.Cell(row, 1).Value = c.Pasaporte ?? ""; ws.Cell(row, 2).Value = c.Name; ws.Cell(row, 3).Value = c.Email; ws.Cell(row, 4).Value = c.Phone ?? "";
+            ws.Cell(row, 1).Value = $"CL-{c.Id:D4}";
+            ws.Cell(row, 2).Value = c.Name;
+            ws.Cell(row, 3).Value = c.Email;
+            ws.Cell(row, 4).Value = c.Phone ?? "";
+            ws.Cell(row, 5).Value = c.Address ?? "";
+            ws.Cell(row, 6).Value = c.GraduacionOd ?? "";
+            ws.Cell(row, 7).Value = c.GraduacionOi ?? "";
+            ws.Cell(row, 8).Value = c.FechaRegistro?.ToString("dd/MM/yyyy") ?? "-";
+            ws.Cell(row, 9).Value = c.Status ?? "";
             row++;
         }
         ws.Columns().AdjustToContents();
@@ -44,8 +60,20 @@ public class ExportService : IExportService
     {
         var list = GetClientsList(search);
         var companyName = _settings.GetCompanyName();
-        return BuildTablePdf(companyName, "Listado de clientes", new[] { "Pasaporte", "Nombre", "Correo", "Teléfono" },
-            list.Select(c => new[] { c.Pasaporte ?? "-", c.Name, c.Email, c.Phone ?? "-" }).ToList());
+        return BuildTablePdf(companyName, "Listado de clientes", new[] { "Código", "Nombre", "Correo", "Teléfono", "Dirección", "Grad. OD", "Grad. OI", "Fecha reg.", "Estado" },
+            list.Select(c => new[]
+            {
+                $"CL-{c.Id:D4}",
+                c.Name,
+                c.Email,
+                c.Phone ?? "-",
+                c.Address ?? "-",
+                c.GraduacionOd ?? "-",
+                c.GraduacionOi ?? "-",
+                c.FechaRegistro?.ToString("dd/MM/yyyy") ?? "-",
+                c.Status ?? "-"
+            }).ToList(),
+            true);
     }
 
     public byte[] GetProductsExcel(string? search = null)
@@ -137,7 +165,7 @@ public class ExportService : IExportService
         foreach (var s in list)
         {
             var pending = Math.Max(0, s.Total - s.AmountPaid);
-            ws.Cell(row, 1).Value = s.Date.ToString("dd/MM/yyyy HH:mm");
+            ws.Cell(row, 1).Value = TimeZoneHelper.ToNicaragua(s.Date).ToString("dd/MM/yyyy HH:mm");
             ws.Cell(row, 2).Value = s.ClientName ?? "-";
             ws.Cell(row, 3).Value = s.SaleItems?.Count ?? 0;
             ws.Cell(row, 4).Value = s.Total;
@@ -163,7 +191,7 @@ public class ExportService : IExportService
             var pending = Math.Max(0, s.Total - s.AmountPaid);
             return new[]
             {
-                s.Date.ToString("dd/MM/yyyy HH:mm"),
+                TimeZoneHelper.ToNicaragua(s.Date).ToString("dd/MM/yyyy HH:mm"),
                 s.ClientName ?? "-",
                 (s.SaleItems?.Count ?? 0).ToString(),
                 s.Total.ToString("N2"),
@@ -212,16 +240,27 @@ public class ExportService : IExportService
         var list = GetInvoicesList(clientId, status, paymentMethod, dateFrom, dateTo);
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("Facturas");
-        ws.Cell(1, 1).Value = "Nº Factura"; ws.Cell(1, 2).Value = "Cliente"; ws.Cell(1, 3).Value = "Fecha"; ws.Cell(1, 4).Value = "Vencimiento"; ws.Cell(1, 5).Value = "Fecha viaje"; ws.Cell(1, 6).Value = "Fecha retorno"; ws.Cell(1, 7).Value = "Monto"; ws.Cell(1, 8).Value = "Estado"; ws.Cell(1, 9).Value = "Concepto"; ws.Cell(1, 10).Value = "Forma de pago";
-        var headerRow = ws.Range(1, 1, 1, 10);
+        ws.Cell(1, 1).Value = "Nº Factura";
+        ws.Cell(1, 2).Value = "Cliente";
+        ws.Cell(1, 3).Value = "Fecha";
+        ws.Cell(1, 4).Value = "Vencimiento";
+        ws.Cell(1, 5).Value = "Monto";
+        ws.Cell(1, 6).Value = "Estado";
+        ws.Cell(1, 7).Value = "Concepto";
+        ws.Cell(1, 8).Value = "Forma de pago";
+        var headerRow = ws.Range(1, 1, 1, 8);
         headerRow.Style.Font.Bold = true; headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
         var row = 2;
         foreach (var i in list)
         {
-            ws.Cell(row, 1).Value = i.Id; ws.Cell(row, 2).Value = i.Client?.Name ?? "";
-            ws.Cell(row, 3).Value = i.Date.ToString("dd/MM/yyyy"); ws.Cell(row, 4).Value = i.DueDate?.ToString("dd/MM/yyyy") ?? "-";
-            ws.Cell(row, 5).Value = i.TravelDate?.ToString("dd/MM/yyyy") ?? "-"; ws.Cell(row, 6).Value = i.ReturnDate?.ToString("dd/MM/yyyy") ?? "-";
-            ws.Cell(row, 7).Value = i.Amount; ws.Cell(row, 8).Value = i.Status; ws.Cell(row, 9).Value = i.Concept ?? ""; ws.Cell(row, 10).Value = i.PaymentMethod ?? "-";
+            ws.Cell(row, 1).Value = i.Id;
+            ws.Cell(row, 2).Value = i.Client?.Name ?? "";
+            ws.Cell(row, 3).Value = i.Date.ToString("dd/MM/yyyy");
+            ws.Cell(row, 4).Value = i.DueDate?.ToString("dd/MM/yyyy") ?? "-";
+            ws.Cell(row, 5).Value = i.Amount;
+            ws.Cell(row, 6).Value = i.Status;
+            ws.Cell(row, 7).Value = i.Concept ?? "";
+            ws.Cell(row, 8).Value = i.PaymentMethod ?? "-";
             row++;
         }
         ws.Columns().AdjustToContents();
@@ -235,8 +274,18 @@ public class ExportService : IExportService
         var list = GetInvoicesList(clientId, status, paymentMethod, dateFrom, dateTo);
         var companyName = _settings.GetCompanyName();
         var currency = _settings.Get()?.Currency ?? "NIO";
-        var rows = list.Select(i => new[] { i.Id, i.Client?.Name ?? "-", i.Date.ToString("dd/MM/yyyy"), i.DueDate?.ToString("dd/MM/yyyy") ?? "-", i.TravelDate?.ToString("dd/MM/yyyy") ?? "-", i.ReturnDate?.ToString("dd/MM/yyyy") ?? "-", $"{i.Amount:N2} {currency}", i.Status, i.Concept ?? "-", i.PaymentMethod ?? "-" }).ToList();
-        return BuildTablePdf(companyName, "Listado de facturas", new[] { "Nº Factura", "Cliente", "Fecha", "Vencimiento", "Fecha viaje", "Fecha retorno", "Monto", "Estado", "Concepto", "Forma de pago" }, rows, true);
+        var rows = list.Select(i => new[]
+        {
+            i.Id,
+            i.Client?.Name ?? "-",
+            i.Date.ToString("dd/MM/yyyy"),
+            i.DueDate?.ToString("dd/MM/yyyy") ?? "-",
+            $"{i.Amount:N2} {currency}",
+            i.Status,
+            i.Concept ?? "-",
+            i.PaymentMethod ?? "-"
+        }).ToList();
+        return BuildTablePdf(companyName, "Listado de facturas", new[] { "Nº Factura", "Cliente", "Fecha", "Vencimiento", "Monto", "Estado", "Concepto", "Forma de pago" }, rows, true);
     }
 
     public byte[] GetExpensesExcel(DateTime? dateFrom = null, DateTime? dateTo = null)
@@ -366,7 +415,13 @@ public class ExportService : IExportService
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.Trim().ToLower();
-            q = q.Where(c => (c.Name != null && c.Name.ToLower().Contains(s)) || (c.Pasaporte != null && c.Pasaporte.ToLower().Contains(s)) || (c.Email != null && c.Email.ToLower().Contains(s)) || (c.Phone != null && c.Phone.ToLower().Contains(s)));
+            q = q.Where(c =>
+                (c.Name != null && c.Name.ToLower().Contains(s)) ||
+                (c.Email != null && c.Email.ToLower().Contains(s)) ||
+                (c.Phone != null && c.Phone.ToLower().Contains(s)) ||
+                (c.Address != null && c.Address.ToLower().Contains(s)) ||
+                (c.GraduacionOd != null && c.GraduacionOd.ToLower().Contains(s)) ||
+                (c.GraduacionOi != null && c.GraduacionOi.ToLower().Contains(s)));
         }
         return q.OrderBy(c => c.Name).ToList();
     }
