@@ -52,35 +52,20 @@ public class SalesHistoryController : ControllerBase
     [HttpGet("{id:int}/ticket-pdf-url")]
     public IActionResult GetTicketPdfUrl(int id)
     {
-        var sale = _context.Sales.Include(s => s.SaleItems).FirstOrDefault(s => s.Id == id);
+        var sale = _service.GetSaleById(id);
         if (sale == null) return NotFound(new { error = "Venta no encontrada" });
         var req = _httpContext.HttpContext?.Request;
         var scheme = req?.Scheme ?? "https";
         var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
-        var url = $"{scheme}://{host}/api/sales-history/{id}/ticket-pdf";
-        var invoice = FindInvoiceForSale(sale);
-        if (invoice != null)
-            url = $"{scheme}://{host}/api/invoices/{Uri.EscapeDataString(invoice.Id)}/pdf";
-        return Ok(new { pdfUrl = url });
+        return Ok(new { pdfUrl = $"{scheme}://{host}/api/sales-history/{id}/ticket-pdf" });
     }
 
     /// <summary>PDF ticket 80mm para venta/cotización.</summary>
     [HttpGet("{id:int}/ticket-pdf")]
     public IActionResult GetTicketPdf(int id)
     {
-        var sale = _context.Sales.Include(s => s.SaleItems).FirstOrDefault(s => s.Id == id);
+        var sale = _service.GetSaleById(id);
         if (sale == null) return NotFound(new { error = "Venta no encontrada" });
-
-        // Si existe factura para esta venta, usamos ese mismo PDF canónico.
-        var invoice = FindInvoiceForSale(sale);
-        if (invoice != null)
-        {
-            var invoiceBytes = _invoicePdfService.GeneratePdf(invoice.Id);
-            if (invoiceBytes == null || invoiceBytes.Length == 0)
-                return StatusCode(500, new { error = "No se pudo generar el PDF de factura." });
-            Response.Headers.Append("Content-Disposition", $"inline; filename=\"Factura-{invoice.Id}.pdf\"");
-            return File(invoiceBytes, "application/pdf");
-        }
 
         var bytes = _saleTicketPdfService.GeneratePdf(id);
         if (bytes == null || bytes.Length == 0)
@@ -172,13 +157,6 @@ public class SalesHistoryController : ControllerBase
         return $"{scheme}://{host}/api/invoices/{Uri.EscapeDataString(invoiceId)}/pdf";
     }
 
-    private Invoice? FindInvoiceForSale(Sale sale)
-    {
-        if (!sale.ClientId.HasValue) return null;
-        if (!SaleInvoiceHelper.IsPaidSale(sale.Status)) return null;
-        var concept = SaleInvoiceHelper.BuildSaleConcept(sale);
-        return _context.Invoices.FirstOrDefault(i => i.ClientId == sale.ClientId.Value && i.Concept == concept);
-    }
 }
 
 public class SalesHistoryUpdateRequest

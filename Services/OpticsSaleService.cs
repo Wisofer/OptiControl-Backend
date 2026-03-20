@@ -11,20 +11,17 @@ public class OpticsSaleService : IOpticsSaleService
 {
     private readonly ApplicationDbContext _context;
     private readonly IActivityService _activity;
-    private readonly IInvoiceService _invoiceService;
     private readonly ISettingsService _settingsService;
     private readonly IHttpContextAccessor _httpContext;
 
     public OpticsSaleService(
         ApplicationDbContext context,
         IActivityService activity,
-        IInvoiceService invoiceService,
         ISettingsService settingsService,
         IHttpContextAccessor httpContext)
     {
         _context = context;
         _activity = activity;
-        _invoiceService = invoiceService;
         _settingsService = settingsService;
         _httpContext = httpContext;
     }
@@ -91,54 +88,12 @@ public class OpticsSaleService : IOpticsSaleService
         return it.UnitPrice;
     }
 
-    private string BuildInvoicePdfUrl(string invoiceId)
-    {
-        var req = _httpContext.HttpContext?.Request;
-        var scheme = req?.Scheme ?? "https";
-        var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
-        return $"{scheme}://{host}/api/invoices/{Uri.EscapeDataString(invoiceId)}/pdf";
-    }
-
-    private string BuildInvoicePublicPdfUrl(string invoiceId)
-    {
-        var req = _httpContext.HttpContext?.Request;
-        var scheme = req?.Scheme ?? "https";
-        var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
-        return $"{scheme}://{host}/api/public/invoices/{Uri.EscapeDataString(invoiceId)}/pdf";
-    }
-
     private string BuildSaleTicketPdfUrl(int saleId)
     {
         var req = _httpContext.HttpContext?.Request;
         var scheme = req?.Scheme ?? "https";
         var host = req?.Host.ToString() ?? "opticontrol.cowib.es";
         return $"{scheme}://{host}/api/sales-history/{saleId}/ticket-pdf";
-    }
-
-    private (string? InvoiceId, string? InvoicePdfUrl, string? InvoicePublicPdfUrl) EnsureInvoiceForSale(Sale sale)
-    {
-        if (!sale.ClientId.HasValue || sale.ClientId.Value <= 0) return (null, null, null);
-        if (!SaleInvoiceHelper.IsPaidSale(sale.Status)) return (null, null, null);
-        if (string.Equals(sale.Status, SD.SaleStatusCotizacion, StringComparison.OrdinalIgnoreCase)) return (null, null, null);
-        if (string.Equals(sale.Status, SD.SaleStatusCancelada, StringComparison.OrdinalIgnoreCase)) return (null, null, null);
-
-        var concept = SaleInvoiceHelper.BuildSaleConcept(sale);
-        var existing = _context.Invoices.FirstOrDefault(i => i.ClientId == sale.ClientId.Value && i.Concept == concept);
-        if (existing != null)
-            return (existing.Id, BuildInvoicePdfUrl(existing.Id), BuildInvoicePublicPdfUrl(existing.Id));
-
-        var invoice = new Invoice
-        {
-            ClientId = sale.ClientId.Value,
-            Date = DateTime.UtcNow,
-            DueDate = DateTime.UtcNow.Date.AddDays(7),
-            Amount = sale.Total,
-            Status = SD.InvoiceStatusPagado,
-            Concept = concept,
-            PaymentMethod = SaleInvoiceHelper.MapInvoicePaymentMethod(sale.PaymentMethod, sale.Currency)
-        };
-        var created = _invoiceService.Create(invoice);
-        return (created.Id, BuildInvoicePdfUrl(created.Id), BuildInvoicePublicPdfUrl(created.Id));
     }
 
     /// <summary>Ingreso real: Pagada = total, pendiente = amountPaid, cotizacion/Cancelada = 0.</summary>
@@ -250,12 +205,7 @@ public class OpticsSaleService : IOpticsSaleService
 
         _context.Entry(sale).Collection(s => s.SaleItems).Load();
         var response = ToSaleResponse(sale);
-        var invoiceResult = EnsureInvoiceForSale(sale);
-        response.InvoiceId = invoiceResult.InvoiceId;
-        response.InvoicePdfUrl = invoiceResult.InvoicePdfUrl;
-        response.InvoicePublicPdfUrl = invoiceResult.InvoicePublicPdfUrl;
-        // Para ventas pagadas usamos un solo PDF canónico (factura) para imprimir/compartir.
-        response.SaleTicketPdfUrl = invoiceResult.InvoicePdfUrl ?? BuildSaleTicketPdfUrl(sale.Id);
+        response.SaleTicketPdfUrl = BuildSaleTicketPdfUrl(sale.Id);
         var totalUsd = exchangeRate > 0 ? Round2(totalNio / exchangeRate) : totalNio;
         var amountPaidNio = IsUsdCurrency(saleCurrency) ? Round2(amountPaidSaleCurrency * exchangeRate) : amountPaidSaleCurrency;
         var amountPaidUsd = IsUsdCurrency(saleCurrency) ? amountPaidSaleCurrency : (exchangeRate > 0 ? Round2(amountPaidSaleCurrency / exchangeRate) : amountPaidSaleCurrency);
